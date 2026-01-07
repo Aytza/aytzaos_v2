@@ -49,6 +49,7 @@ Weft runs entirely on [Cloudflare's Developer Platform](https://workers.cloudfla
 ### Prerequisites
 
 - [Node.js](https://nodejs.org/) 18+
+- [Docker](https://docs.docker.com/desktop/) running (required for [Cloudflare Sandboxes](https://developers.cloudflare.com/sandbox/))
 - [Cloudflare account](https://dash.cloudflare.com/sign-up) with [Workers Paid plan](https://developers.cloudflare.com/workers/platform/pricing/)
 - OAuth credentials for integrations you want to use:
   - [Google](#google-gmail-docs-sheets) for Gmail/Docs/Sheets
