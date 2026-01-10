@@ -5,10 +5,13 @@ import { TaskModal } from './TaskModal';
 import { WorkflowBadge } from '../Workflow';
 import './TaskCard.css';
 
-/** Strip pill markdown syntax, keeping just the title */
-function stripPillSyntax(text: string): string {
-  // [pill:type:title](url) -> title
-  return text.replace(/\[pill:[^:]+:([^\]]+)\]\([^)]+\)/g, '$1');
+/** Strip markdown syntax (pills and links) to plain text for card preview */
+function stripMarkdownToText(text: string): string {
+  return text
+    // [pill:type:title](url) -> title
+    .replace(/\[pill:[^:]+:([^\]]+)\]\([^)]+\)/g, '$1')
+    // [text](url) -> text
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1');
 }
 
 interface TaskCardProps {
@@ -151,7 +154,7 @@ export function TaskCard({ task }: TaskCardProps) {
           )}
         </div>
         {task.description && (
-          <span className="task-description">{stripPillSyntax(task.description)}</span>
+          <span className="task-description">{stripMarkdownToText(task.description)}</span>
         )}
       </div>
 

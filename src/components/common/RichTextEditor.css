@@ -117,6 +117,85 @@
   white-space: nowrap;
 }
 
+/* Inline link styling */
+.rte-link {
+  color: var(--color-primary);
+  text-decoration: underline;
+  text-decoration-color: var(--color-primary-subtle);
+  text-underline-offset: 2px;
+  cursor: text;
+  transition: text-decoration-color var(--transition-fast);
+}
+
+.rte-link:hover {
+  text-decoration-color: var(--color-primary);
+}
+
+.rte-link:visited {
+  color: var(--color-primary);
+}
+
+/* Link hover tooltip */
+.rte-link-tooltip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 8px;
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-md);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  font-size: 12px;
+  z-index: 10000;
+  animation: tooltipFadeIn 0.15s ease-out;
+}
+
+.rte-link-tooltip-url {
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--color-text-secondary);
+  font-size: 11px;
+  text-decoration: none;
+  cursor: pointer;
+  transition: color var(--transition-fast);
+}
+
+.rte-link-tooltip-url:hover {
+  color: var(--color-primary);
+}
+
+.rte-link-tooltip-divider {
+  width: 1px;
+  height: 16px;
+  background: var(--color-border-default);
+  margin: 0 2px;
+}
+
+.rte-link-tooltip-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.rte-link-tooltip-btn:hover {
+  background: var(--color-bg-tertiary);
+  color: var(--color-text-primary);
+}
+
+.rte-link-tooltip-btn-danger:hover {
+  background: var(--color-bg-tertiary);
+  color: var(--color-danger);
+}
+
 /* Floating tooltip */
 .rte-tooltip {
   display: inline-flex;
@@ -206,6 +285,14 @@
   }
 
   .rte-pill-title {
+    max-width: 120px;
+  }
+
+  .rte-link-tooltip {
+    max-width: calc(100vw - 32px);
+  }
+
+  .rte-link-tooltip-url {
     max-width: 120px;
   }
 }
