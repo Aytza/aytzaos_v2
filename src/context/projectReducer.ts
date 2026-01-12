@@ -1,19 +1,19 @@
 /**
- * Board reducer - State management logic for BoardContext
+ * Project reducer - State management logic for ProjectContext
  *
- * Extracted from BoardContext.tsx for better maintainability.
+ * Extracted from ProjectContext.tsx for better maintainability.
  */
 
-import type { Board, Column, Task, DragState, ColumnDragState, WorkflowPlan, WorkflowLog } from '../types';
-import type { BoardWithDetails } from '../api/client';
+import type { Project, Column, Task, DragState, ColumnDragState, WorkflowPlan, WorkflowLog } from '../types';
+import type { ProjectWithDetails } from '../api/client';
 
 // ============================================
 // STATE
 // ============================================
 
-export interface BoardState {
-  boards: Board[];
-  activeBoard: BoardWithDetails | null;
+export interface ProjectState {
+  projects: Project[];
+  activeProject: ProjectWithDetails | null;
   loading: boolean;
   error: string | null;
   dragState: DragState;
@@ -23,9 +23,12 @@ export interface BoardState {
   workflowLogs: Record<string, WorkflowLog[]>;
 }
 
-export const initialBoardState: BoardState = {
-  boards: [],
-  activeBoard: null,
+/** @deprecated Use ProjectState instead */
+export type BoardState = ProjectState;
+
+export const initialProjectState: ProjectState = {
+  projects: [],
+  activeProject: null,
   loading: false,
   error: null,
   dragState: {
@@ -41,18 +44,21 @@ export const initialBoardState: BoardState = {
   workflowLogs: {},
 };
 
+/** @deprecated Use initialProjectState instead */
+export const initialBoardState = initialProjectState;
+
 // ============================================
 // ACTIONS
 // ============================================
 
-export type BoardAction =
+export type ProjectAction =
   | { type: 'SET_LOADING'; payload: boolean }
   | { type: 'SET_ERROR'; payload: string | null }
-  | { type: 'SET_BOARDS'; payload: Board[] }
-  | { type: 'SET_ACTIVE_BOARD'; payload: BoardWithDetails | null }
-  | { type: 'ADD_BOARD'; payload: BoardWithDetails }
-  | { type: 'UPDATE_BOARD'; payload: { id: string; name: string } }
-  | { type: 'REMOVE_BOARD'; payload: string }
+  | { type: 'SET_PROJECTS'; payload: Project[] }
+  | { type: 'SET_ACTIVE_PROJECT'; payload: ProjectWithDetails | null }
+  | { type: 'ADD_PROJECT'; payload: ProjectWithDetails }
+  | { type: 'UPDATE_PROJECT'; payload: { id: string; name: string } }
+  | { type: 'REMOVE_PROJECT'; payload: string }
   | { type: 'ADD_COLUMN'; payload: Column }
   | { type: 'UPDATE_COLUMN'; payload: Column }
   | { type: 'REMOVE_COLUMN'; payload: string }
@@ -70,11 +76,14 @@ export type BoardAction =
   | { type: 'SET_WORKFLOW_LOGS'; payload: { planId: string; logs: WorkflowLog[] } }
   | { type: 'CLEAR_WORKFLOW_STATE' };
 
+/** @deprecated Use ProjectAction instead */
+export type BoardAction = ProjectAction;
+
 // ============================================
 // REDUCER
 // ============================================
 
-export function boardReducer(state: BoardState, action: BoardAction): BoardState {
+export function projectReducer(state: ProjectState, action: ProjectAction): ProjectState {
   switch (action.type) {
     case 'SET_LOADING':
       return { ...state, loading: action.payload };
@@ -82,108 +91,108 @@ export function boardReducer(state: BoardState, action: BoardAction): BoardState
     case 'SET_ERROR':
       return { ...state, error: action.payload };
 
-    case 'SET_BOARDS':
-      return { ...state, boards: action.payload };
+    case 'SET_PROJECTS':
+      return { ...state, projects: action.payload };
 
-    case 'SET_ACTIVE_BOARD':
-      return { ...state, activeBoard: action.payload };
+    case 'SET_ACTIVE_PROJECT':
+      return { ...state, activeProject: action.payload };
 
-    case 'ADD_BOARD':
+    case 'ADD_PROJECT':
       return {
         ...state,
-        boards: [action.payload, ...state.boards],
-        activeBoard: action.payload,
+        projects: [action.payload, ...state.projects],
+        activeProject: action.payload,
       };
 
-    case 'UPDATE_BOARD':
+    case 'UPDATE_PROJECT':
       return {
         ...state,
-        boards: state.boards.map((b) =>
-          b.id === action.payload.id ? { ...b, name: action.payload.name } : b
+        projects: state.projects.map((p) =>
+          p.id === action.payload.id ? { ...p, name: action.payload.name } : p
         ),
-        activeBoard:
-          state.activeBoard?.id === action.payload.id
-            ? { ...state.activeBoard, name: action.payload.name }
-            : state.activeBoard,
+        activeProject:
+          state.activeProject?.id === action.payload.id
+            ? { ...state.activeProject, name: action.payload.name }
+            : state.activeProject,
       };
 
-    case 'REMOVE_BOARD':
+    case 'REMOVE_PROJECT':
       return {
         ...state,
-        boards: state.boards.filter((b) => b.id !== action.payload),
-        activeBoard:
-          state.activeBoard?.id === action.payload ? null : state.activeBoard,
+        projects: state.projects.filter((p) => p.id !== action.payload),
+        activeProject:
+          state.activeProject?.id === action.payload ? null : state.activeProject,
       };
 
     case 'ADD_COLUMN':
-      if (!state.activeBoard) return state;
+      if (!state.activeProject) return state;
       return {
         ...state,
-        activeBoard: {
-          ...state.activeBoard,
-          columns: [...state.activeBoard.columns, action.payload],
+        activeProject: {
+          ...state.activeProject,
+          columns: [...state.activeProject.columns, action.payload],
         },
       };
 
     case 'UPDATE_COLUMN':
-      if (!state.activeBoard) return state;
+      if (!state.activeProject) return state;
       return {
         ...state,
-        activeBoard: {
-          ...state.activeBoard,
-          columns: state.activeBoard.columns.map((c) =>
+        activeProject: {
+          ...state.activeProject,
+          columns: state.activeProject.columns.map((c) =>
             c.id === action.payload.id ? action.payload : c
           ),
         },
       };
 
     case 'REMOVE_COLUMN':
-      if (!state.activeBoard) return state;
+      if (!state.activeProject) return state;
       return {
         ...state,
-        activeBoard: {
-          ...state.activeBoard,
-          columns: state.activeBoard.columns.filter((c) => c.id !== action.payload),
-          tasks: state.activeBoard.tasks.filter((t) => t.columnId !== action.payload),
+        activeProject: {
+          ...state.activeProject,
+          columns: state.activeProject.columns.filter((c) => c.id !== action.payload),
+          tasks: state.activeProject.tasks.filter((t) => t.columnId !== action.payload),
         },
       };
 
     case 'ADD_TASK':
-      if (!state.activeBoard) return state;
+      if (!state.activeProject) return state;
       return {
         ...state,
-        activeBoard: {
-          ...state.activeBoard,
-          tasks: [...state.activeBoard.tasks, action.payload],
+        activeProject: {
+          ...state.activeProject,
+          tasks: [...state.activeProject.tasks, action.payload],
         },
       };
 
     case 'UPDATE_TASK':
-      if (!state.activeBoard) return state;
+      if (!state.activeProject) return state;
       return {
         ...state,
-        activeBoard: {
-          ...state.activeBoard,
-          tasks: state.activeBoard.tasks.map((t) =>
+        activeProject: {
+          ...state.activeProject,
+          tasks: state.activeProject.tasks.map((t) =>
             t.id === action.payload.id ? action.payload : t
           ),
         },
       };
 
     case 'REMOVE_TASK':
-      if (!state.activeBoard) return state;
+      if (!state.activeProject) return state;
       return {
         ...state,
-        activeBoard: {
-          ...state.activeBoard,
-          tasks: state.activeBoard.tasks.filter((t) => t.id !== action.payload),
+        activeProject: {
+          ...state.activeProject,
+          tasks: state.activeProject.tasks.filter((t) => t.id !== action.payload),
         },
       };
 
     case 'MOVE_TASK': {
-      if (!state.activeBoard) return state;
+      if (!state.activeProject) return state;
       const { taskId, columnId: targetColumnId, position: newPosition } = action.payload;
-      const movedTask = state.activeBoard.tasks.find(t => t.id === taskId);
+      const movedTask = state.activeProject.tasks.find(t => t.id === taskId);
       if (!movedTask) return state;
 
       const sourceColumnId = movedTask.columnId;
@@ -191,9 +200,9 @@ export function boardReducer(state: BoardState, action: BoardAction): BoardState
 
       return {
         ...state,
-        activeBoard: {
-          ...state.activeBoard,
-          tasks: state.activeBoard.tasks.map((t) => {
+        activeProject: {
+          ...state.activeProject,
+          tasks: state.activeProject.tasks.map((t) => {
             if (t.id === taskId) {
               return { ...t, columnId: targetColumnId, position: newPosition };
             }
@@ -290,3 +299,6 @@ export function boardReducer(state: BoardState, action: BoardAction): BoardState
       return state;
   }
 }
+
+/** @deprecated Use projectReducer instead */
+export const boardReducer = projectReducer;
