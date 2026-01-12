@@ -17,7 +17,8 @@ export async function handleGeneratePlan(
   env: Env,
   boardStub: BoardDOStub,
   boardId: string,
-  taskId: string
+  taskId: string,
+  agentId?: string
 ): Promise<Response> {
   if (!env.AGENT_WORKFLOW) {
     return jsonResponse({
@@ -35,6 +36,22 @@ export async function handleGeneratePlan(
       success: false,
       error: { code: 'NOT_FOUND', message: 'Task not found' },
     }, 404);
+  }
+
+  // If an agent is specified, look up its system prompt
+  let customSystemPrompt: string | undefined;
+  let agentModel: string | undefined;
+  if (agentId) {
+    try {
+      const agent = await boardStub.getAgent(agentId);
+      if (agent.enabled) {
+        customSystemPrompt = agent.systemPrompt;
+        agentModel = agent.model;
+      }
+    } catch {
+      // Agent not found, continue with default
+      logger.workflow.warn('Custom agent not found', { agentId });
+    }
   }
 
   // Create a plan record with status 'executing' (skip planning/draft)
@@ -77,6 +94,8 @@ export async function handleGeneratePlan(
       projectId: boardId,
       taskDescription,
       anthropicApiKey,
+      customSystemPrompt,
+      agentModel,
     };
 
     await env.AGENT_WORKFLOW.create({

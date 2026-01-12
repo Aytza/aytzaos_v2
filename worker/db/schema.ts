@@ -147,6 +147,22 @@ export function initSchema(sql: SqlStorage): void {
       FOREIGN KEY (server_id) REFERENCES mcp_servers(id) ON DELETE CASCADE
     );
     CREATE INDEX IF NOT EXISTS idx_mcp_oauth_pending_state ON mcp_oauth_pending(state);
+
+    -- Agents (custom AI agents with system prompts)
+    CREATE TABLE IF NOT EXISTS agents (
+      id TEXT PRIMARY KEY,
+      project_id TEXT,
+      name TEXT NOT NULL,
+      description TEXT,
+      system_prompt TEXT NOT NULL,
+      model TEXT DEFAULT 'claude-sonnet-4-5-20250929',
+      icon TEXT,
+      enabled INTEGER NOT NULL DEFAULT 1,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
+    );
+    CREATE INDEX IF NOT EXISTS idx_agents_project ON agents(project_id);
   `);
 
   runMigrations(sql);
@@ -173,6 +189,13 @@ function runMigrations(sql: SqlStorage): void {
   // Add user_id column to tasks if it doesn't exist (for standalone tasks)
   try {
     sql.exec('ALTER TABLE tasks ADD COLUMN user_id TEXT');
+  } catch {
+    // Column already exists
+  }
+
+  // Add agent_id column to workflow_plans if it doesn't exist
+  try {
+    sql.exec('ALTER TABLE workflow_plans ADD COLUMN agent_id TEXT');
   } catch {
     // Column already exists
   }

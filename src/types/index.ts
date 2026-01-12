@@ -225,6 +225,23 @@ export interface JSONSchema {
 }
 
 // ============================================
+// AGENT TYPES (Custom AI agents)
+// ============================================
+
+export interface Agent {
+  id: string;
+  projectId: string | null;
+  name: string;
+  description: string | null;
+  systemPrompt: string;
+  model: string;
+  icon: string | null;
+  enabled: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ============================================
 // WORKFLOW PLAN TYPES
 // ============================================
 

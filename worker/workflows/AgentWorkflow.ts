@@ -40,6 +40,10 @@ export interface AgentWorkflowParams {
   projectId: string;
   taskDescription: string;
   anthropicApiKey: string;
+  /** Custom system prompt from custom agent */
+  customSystemPrompt?: string;
+  /** Custom model from custom agent */
+  agentModel?: string;
 }
 
 // Event sent to resume from checkpoint
@@ -143,7 +147,7 @@ function formatToolName(toolName: string): string {
 export class AgentWorkflow extends WorkflowEntrypoint<WorkflowEnv, AgentWorkflowParams> {
   async run(event: WorkflowEvent<AgentWorkflowParams>, step: WorkflowStep) {
     const params = event.payload;
-    const { planId, projectId, taskDescription, anthropicApiKey } = params;
+    const { planId, projectId, taskDescription, anthropicApiKey, customSystemPrompt, agentModel } = params;
 
     const getBoardStub = (): DurableObjectStub<BoardDO> => {
       const doId = this.env.BOARD_DO.idFromName(projectId);
@@ -286,7 +290,12 @@ export class AgentWorkflow extends WorkflowEntrypoint<WorkflowEnv, AgentWorkflow
       };
 
       const claudeTools = this.buildClaudeTools(mcpConfig.servers);
-      const systemPrompt = this.buildSystemPrompt(mcpConfig.servers);
+      // Use custom system prompt if provided, otherwise build default
+      const systemPrompt = customSystemPrompt
+        ? this.buildSystemPromptWithCustom(customSystemPrompt, mcpConfig.servers)
+        : this.buildSystemPrompt(mcpConfig.servers);
+      // Use custom model if provided, otherwise use default
+      const modelToUse = agentModel || DEFAULT_MODEL;
       const messages: MessageParam[] = [
         { role: 'user', content: taskDescription },
       ];
@@ -311,7 +320,7 @@ export class AgentWorkflow extends WorkflowEntrypoint<WorkflowEnv, AgentWorkflow
           const client = new Anthropic({ apiKey: mcpConfig.credentials.anthropicApiKey });
 
           const stream = client.messages.stream({
-            model: DEFAULT_MODEL,
+            model: modelToUse,
             max_tokens: 8192,
             system: systemPrompt,
             messages,
@@ -809,6 +818,31 @@ When providing final outputs to the user:
 - No extra headers, metadata, or footers
 - No "Here is..." preambles or "I've created..." explanations
 - Just the content itself`;
+  }
+
+  /**
+   * Build system prompt with custom agent prompt
+   * Combines the custom prompt with tool information and standard guidelines
+   */
+  private buildSystemPromptWithCustom(customPrompt: string, servers: MCPServerInfo[]): string {
+    const toolsList = servers
+      .map((s) => `- **${s.name}**: ${s.tools.map((t) => t.name).join(', ')}`)
+      .join('\n');
+
+    const serverNames = servers.map(s => s.name.replace(/\s+/g, '_'));
+    const workflowGuidance = getWorkflowGuidance(serverNames);
+
+    return `${customPrompt}
+
+## Available Tools
+${toolsList}
+- **request_approval**: Pause and ask user for approval
+
+## Tool Usage Guidelines
+- Use request_approval before any irreversible actions (sending emails, creating documents, etc.)
+- When approval includes \`userData\`, use those values to override your original data
+
+${workflowGuidance}`;
   }
 
   /**

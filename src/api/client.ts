@@ -10,6 +10,7 @@ import type {
   WorkflowPlan,
   WorkflowLog,
   User,
+  Agent,
 } from '../types';
 
 const API_BASE = '/api';
@@ -236,6 +237,60 @@ export async function updateStandaloneTask(
 
 export async function deleteStandaloneTask(id: string): Promise<ApiResponse<void>> {
   return request<void>(`/tasks/${id}`, {
+    method: 'DELETE',
+  });
+}
+
+// ============================================
+// AGENTS (Custom AI agents)
+// ============================================
+
+export async function getAgents(projectId?: string): Promise<ApiResponse<Agent[]>> {
+  const query = projectId ? `?projectId=${encodeURIComponent(projectId)}` : '';
+  return request<Agent[]>(`/agents${query}`);
+}
+
+export async function getAgent(id: string, projectId?: string): Promise<ApiResponse<Agent>> {
+  const query = projectId ? `?projectId=${encodeURIComponent(projectId)}` : '';
+  return request<Agent>(`/agents/${id}${query}`);
+}
+
+export async function createAgent(data: {
+  projectId?: string;
+  name: string;
+  description?: string;
+  systemPrompt: string;
+  model?: string;
+  icon?: string;
+}): Promise<ApiResponse<Agent>> {
+  return request<Agent>('/agents', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateAgent(
+  id: string,
+  data: {
+    name?: string;
+    description?: string;
+    systemPrompt?: string;
+    model?: string;
+    icon?: string;
+    enabled?: boolean;
+  },
+  projectId?: string
+): Promise<ApiResponse<Agent>> {
+  const query = projectId ? `?projectId=${encodeURIComponent(projectId)}` : '';
+  return request<Agent>(`/agents/${id}${query}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteAgent(id: string, projectId?: string): Promise<ApiResponse<void>> {
+  const query = projectId ? `?projectId=${encodeURIComponent(projectId)}` : '';
+  return request<void>(`/agents/${id}${query}`, {
     method: 'DELETE',
   });
 }
@@ -585,10 +640,12 @@ export async function getWorkflowLogs(
 
 export async function generateWorkflowPlan(
   projectId: string,
-  taskId: string
+  taskId: string,
+  agentId?: string
 ): Promise<ApiResponse<WorkflowPlan>> {
   return request<WorkflowPlan>(`/projects/${projectId}/tasks/${taskId}/generate-plan`, {
     method: 'POST',
+    body: JSON.stringify({ agentId }),
   });
 }
 

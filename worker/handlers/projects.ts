@@ -200,7 +200,8 @@ export async function routeProjectRequest(
   // POST /api/projects/:id/tasks/:taskId/generate-plan - Generate plan (special handler)
   const generatePlanMatch = subPath.match(/^\/tasks\/([^/]+)\/generate-plan$/);
   if (generatePlanMatch && method === 'POST') {
-    return handleGeneratePlan(env, boardStub, projectId, generatePlanMatch[1]);
+    const body = await request.json() as { agentId?: string };
+    return handleGeneratePlan(env, boardStub, projectId, generatePlanMatch[1], body.agentId);
   }
 
   // GET /api/projects/:id/tasks/:taskId/plan - Get task workflow plan

@@ -1,7 +1,7 @@
 import { jsonResponse } from '../utils/response';
 import { logger } from '../utils/logger';
 import { CREDENTIAL_TYPES } from '../constants';
-import { transformProject, transformColumn, transformTask, toCamelCase } from '../utils/transformations';
+import { transformProject, transformColumn, transformTask, transformAgent, toCamelCase } from '../utils/transformations';
 import { getCredentialTypeForUrlPattern, type UrlPatternType } from '../mcp/AccountMCPRegistry';
 import type { CredentialService } from './CredentialService';
 
@@ -654,5 +654,127 @@ export class BoardService {
         error: { code: 'GITHUB_ERROR', message: error instanceof Error ? error.message : 'Failed to fetch repos' }
       }, 500);
     }
+  }
+
+  // ============================================
+  // AGENT OPERATIONS
+  // ============================================
+
+  /**
+   * Get all agents for a project (or global agents if projectId is null)
+   */
+  getAgents(projectId: string | null): Response {
+    let agents;
+    if (projectId) {
+      // Get project-specific agents + global agents
+      agents = this.sql.exec(
+        'SELECT * FROM agents WHERE project_id = ? OR project_id IS NULL ORDER BY name',
+        projectId
+      ).toArray();
+    } else {
+      // Get only global agents
+      agents = this.sql.exec(
+        'SELECT * FROM agents WHERE project_id IS NULL ORDER BY name'
+      ).toArray();
+    }
+    return jsonResponse({ success: true, data: agents.map(a => transformAgent(a as Record<string, unknown>)) });
+  }
+
+  /**
+   * Get a single agent by ID
+   */
+  getAgent(agentId: string): Response {
+    const agent = this.sql.exec('SELECT * FROM agents WHERE id = ?', agentId).toArray()[0];
+    if (!agent) {
+      return jsonResponse({ success: false, error: { code: 'NOT_FOUND', message: 'Agent not found' } }, 404);
+    }
+    return jsonResponse({ success: true, data: transformAgent(agent as Record<string, unknown>) });
+  }
+
+  /**
+   * Create a new agent
+   */
+  createAgent(data: {
+    projectId?: string | null;
+    name: string;
+    description?: string;
+    systemPrompt: string;
+    model?: string;
+    icon?: string;
+  }): Response {
+    const id = this.generateId();
+    const now = new Date().toISOString();
+
+    this.sql.exec(
+      `INSERT INTO agents (id, project_id, name, description, system_prompt, model, icon, enabled, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?)`,
+      id,
+      data.projectId ?? null,
+      data.name,
+      data.description ?? null,
+      data.systemPrompt,
+      data.model ?? 'claude-sonnet-4-5-20250929',
+      data.icon ?? null,
+      now,
+      now
+    );
+
+    const agent = this.sql.exec('SELECT * FROM agents WHERE id = ?', id).toArray()[0];
+    return jsonResponse({ success: true, data: transformAgent(agent as Record<string, unknown>) });
+  }
+
+  /**
+   * Update an agent
+   */
+  updateAgent(agentId: string, data: {
+    name?: string;
+    description?: string;
+    systemPrompt?: string;
+    model?: string;
+    icon?: string;
+    enabled?: boolean;
+  }): Response {
+    const now = new Date().toISOString();
+
+    const existing = this.sql.exec('SELECT * FROM agents WHERE id = ?', agentId).toArray()[0] as Record<string, unknown> | undefined;
+    if (!existing) {
+      return jsonResponse({ success: false, error: { code: 'NOT_FOUND', message: 'Agent not found' } }, 404);
+    }
+
+    this.sql.exec(
+      `UPDATE agents SET
+        name = ?,
+        description = ?,
+        system_prompt = ?,
+        model = ?,
+        icon = ?,
+        enabled = ?,
+        updated_at = ?
+       WHERE id = ?`,
+      data.name ?? existing.name,
+      data.description ?? existing.description,
+      data.systemPrompt ?? existing.system_prompt,
+      data.model ?? existing.model,
+      data.icon ?? existing.icon,
+      data.enabled !== undefined ? (data.enabled ? 1 : 0) : existing.enabled,
+      now,
+      agentId
+    );
+
+    const agent = this.sql.exec('SELECT * FROM agents WHERE id = ?', agentId).toArray()[0];
+    return jsonResponse({ success: true, data: transformAgent(agent as Record<string, unknown>) });
+  }
+
+  /**
+   * Delete an agent
+   */
+  deleteAgent(agentId: string): Response {
+    const existing = this.sql.exec('SELECT id FROM agents WHERE id = ?', agentId).toArray()[0];
+    if (!existing) {
+      return jsonResponse({ success: false, error: { code: 'NOT_FOUND', message: 'Agent not found' } }, 404);
+    }
+
+    this.sql.exec('DELETE FROM agents WHERE id = ?', agentId);
+    return jsonResponse({ success: true });
   }
 }

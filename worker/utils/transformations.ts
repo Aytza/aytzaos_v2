@@ -94,3 +94,13 @@ export function transformWorkflowLog(log: Record<string, unknown>): Record<strin
 
   return transformed;
 }
+
+/**
+ * Transform agent record for API response
+ */
+export function transformAgent(agent: Record<string, unknown>): Record<string, unknown> {
+  const transformed = toCamelCase(agent);
+  // Convert enabled from SQLite integer to boolean
+  transformed.enabled = transformed.enabled === 1;
+  return transformed;
+}

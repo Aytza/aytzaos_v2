@@ -303,6 +303,175 @@ export default {
       }
 
       // ============================================
+      // AGENTS ROUTES (/api/agents)
+      // ============================================
+
+      // GET /api/agents - List user's agents (global or project-specific)
+      if (url.pathname === '/api/agents' && request.method === 'GET') {
+        const projectId = url.searchParams.get('projectId');
+
+        let boardStub: BoardDOStub;
+
+        if (projectId) {
+          // Project-specific agents - verify access
+          const accessResult = await userStub.hasAccess(projectId);
+          if (!accessResult.hasAccess) {
+            return jsonResponse({
+              success: false,
+              error: { code: 'FORBIDDEN', message: 'Access denied to this project' },
+            }, 403);
+          }
+          const boardDoId = env.BOARD_DO.idFromName(projectId);
+          boardStub = env.BOARD_DO.get(boardDoId) as BoardDOStub;
+        } else {
+          // Global agents - use user's personal container
+          const userTasksId = `user-tasks-${user.id}`;
+          const boardDoId = env.BOARD_DO.idFromName(userTasksId);
+          boardStub = env.BOARD_DO.get(boardDoId) as BoardDOStub;
+
+          // Initialize if needed
+          try {
+            await boardStub.initProject({
+              id: userTasksId,
+              name: 'My Tasks',
+              ownerId: user.id,
+              isUserTasksContainer: true
+            });
+          } catch {
+            // Already initialized, ignore
+          }
+        }
+
+        const agents = await boardStub.getAgents(projectId);
+        return jsonResponse({ success: true, data: agents });
+      }
+
+      // POST /api/agents - Create agent
+      if (url.pathname === '/api/agents' && request.method === 'POST') {
+        const body = await request.json() as {
+          projectId?: string;
+          name: string;
+          description?: string;
+          systemPrompt: string;
+          model?: string;
+          icon?: string;
+        };
+
+        let boardStub: BoardDOStub;
+
+        if (body.projectId) {
+          // Project-specific agent - verify access
+          const accessResult = await userStub.hasAccess(body.projectId);
+          if (!accessResult.hasAccess) {
+            return jsonResponse({
+              success: false,
+              error: { code: 'FORBIDDEN', message: 'Access denied to this project' },
+            }, 403);
+          }
+          const boardDoId = env.BOARD_DO.idFromName(body.projectId);
+          boardStub = env.BOARD_DO.get(boardDoId) as BoardDOStub;
+        } else {
+          // Global agent - use user's personal container
+          const userTasksId = `user-tasks-${user.id}`;
+          const boardDoId = env.BOARD_DO.idFromName(userTasksId);
+          boardStub = env.BOARD_DO.get(boardDoId) as BoardDOStub;
+
+          // Initialize if needed
+          try {
+            await boardStub.initProject({
+              id: userTasksId,
+              name: 'My Tasks',
+              ownerId: user.id,
+              isUserTasksContainer: true
+            });
+          } catch {
+            // Already initialized, ignore
+          }
+        }
+
+        try {
+          const agent = await boardStub.createAgent(body);
+          return jsonResponse({ success: true, data: agent });
+        } catch (error) {
+          return jsonResponse({
+            success: false,
+            error: { code: 'CREATE_FAILED', message: error instanceof Error ? error.message : 'Failed to create agent' },
+          }, 500);
+        }
+      }
+
+      // Agent-specific routes
+      const agentMatch = url.pathname.match(/^\/api\/agents\/([^/]+)$/);
+      if (agentMatch) {
+        const agentId = agentMatch[1];
+        const projectId = url.searchParams.get('projectId');
+
+        let boardStub: BoardDOStub;
+
+        if (projectId) {
+          // Project-specific agent
+          const accessResult = await userStub.hasAccess(projectId);
+          if (!accessResult.hasAccess) {
+            return jsonResponse({
+              success: false,
+              error: { code: 'FORBIDDEN', message: 'Access denied to this project' },
+            }, 403);
+          }
+          const boardDoId = env.BOARD_DO.idFromName(projectId);
+          boardStub = env.BOARD_DO.get(boardDoId) as BoardDOStub;
+        } else {
+          // Global agent
+          const userTasksId = `user-tasks-${user.id}`;
+          const boardDoId = env.BOARD_DO.idFromName(userTasksId);
+          boardStub = env.BOARD_DO.get(boardDoId) as BoardDOStub;
+        }
+
+        if (request.method === 'GET') {
+          try {
+            const agent = await boardStub.getAgent(agentId);
+            return jsonResponse({ success: true, data: agent });
+          } catch {
+            return jsonResponse({
+              success: false,
+              error: { code: 'NOT_FOUND', message: 'Agent not found' },
+            }, 404);
+          }
+        }
+
+        if (request.method === 'PUT' || request.method === 'PATCH') {
+          const body = await request.json() as {
+            name?: string;
+            description?: string;
+            systemPrompt?: string;
+            model?: string;
+            icon?: string;
+            enabled?: boolean;
+          };
+          try {
+            const agent = await boardStub.updateAgent(agentId, body);
+            return jsonResponse({ success: true, data: agent });
+          } catch {
+            return jsonResponse({
+              success: false,
+              error: { code: 'UPDATE_FAILED', message: 'Failed to update agent' },
+            }, 500);
+          }
+        }
+
+        if (request.method === 'DELETE') {
+          try {
+            await boardStub.deleteAgent(agentId);
+            return jsonResponse({ success: true });
+          } catch {
+            return jsonResponse({
+              success: false,
+              error: { code: 'DELETE_FAILED', message: 'Failed to delete agent' },
+            }, 500);
+          }
+        }
+      }
+
+      // ============================================
       // PROJECT-SPECIFIC ROUTES
       // ============================================
 

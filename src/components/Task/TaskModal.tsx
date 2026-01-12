@@ -187,7 +187,7 @@ export function TaskModal({ task, isOpen, onClose }: TaskModalProps) {
     setPastedUrlEndIndex(null);
   }, [clearPendingUrl]);
 
-  const handleStartAgent = async () => {
+  const handleStartAgent = async (agentId?: string) => {
     setIsGeneratingPlan(true);
     setWorkflowError(null);
 
@@ -197,7 +197,7 @@ export function TaskModal({ task, isOpen, onClose }: TaskModalProps) {
 
     if (!activeProject) return;
 
-    const result = await api.generateWorkflowPlan(activeProject.id, task.id);
+    const result = await api.generateWorkflowPlan(activeProject.id, task.id, agentId);
 
     if (result.success && result.data) {
       setWorkflowPlan(result.data);

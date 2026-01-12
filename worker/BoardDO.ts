@@ -92,6 +92,19 @@ export interface MCPTool {
   approvalRequiredFields: string[] | null;
 }
 
+export interface Agent {
+  id: string;
+  projectId: string | null;
+  name: string;
+  description: string | null;
+  systemPrompt: string;
+  model: string;
+  icon: string | null;
+  enabled: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 // ============================================
 // BOARD DURABLE OBJECT
 // ============================================
@@ -609,6 +622,49 @@ export class BoardDO extends DurableObject<Env> {
     const response = await this.boardService.getLinkMetadata(projectId, data);
     const result = await response.json() as { success: boolean; data: object | null };
     return result.data as { type: string; title: string; id: string } | null;
+  }
+
+  // ============================================
+  // AGENT RPC METHODS
+  // ============================================
+
+  async getAgents(projectId: string | null): Promise<Agent[]> {
+    const response = this.boardService.getAgents(projectId);
+    return this.extractData(response);
+  }
+
+  async getAgent(agentId: string): Promise<Agent> {
+    const response = this.boardService.getAgent(agentId);
+    return this.extractData(response);
+  }
+
+  async createAgent(data: {
+    projectId?: string;
+    name: string;
+    description?: string;
+    systemPrompt: string;
+    model?: string;
+    icon?: string;
+  }): Promise<Agent> {
+    const response = this.boardService.createAgent(data);
+    return this.extractData(response);
+  }
+
+  async updateAgent(agentId: string, data: {
+    name?: string;
+    description?: string;
+    systemPrompt?: string;
+    model?: string;
+    icon?: string;
+    enabled?: boolean;
+  }): Promise<Agent> {
+    const response = this.boardService.updateAgent(agentId, data);
+    return this.extractData(response);
+  }
+
+  async deleteAgent(agentId: string): Promise<{ success: boolean }> {
+    const response = this.boardService.deleteAgent(agentId);
+    return this.extractData(response);
   }
 
   // ============================================
