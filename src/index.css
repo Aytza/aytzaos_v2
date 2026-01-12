@@ -1,12 +1,21 @@
 /* ============================================
-   WEFT - CLI-Inspired Kanban Board
+   AYTZAOS - AI-Powered Task Management
    Design System
    ============================================ */
 
 :root {
-  /* Typography */
+  /* Typography - Aytza Brand */
+  --font-heading: 'Outfit', system-ui, -apple-system, sans-serif;
+  --font-body: 'Inter', system-ui, -apple-system, sans-serif;
   --font-mono: 'IBM Plex Mono', 'SF Mono', Consolas, monospace;
-  --font-sans: system-ui, -apple-system, sans-serif;
+  --font-sans: var(--font-body);
+
+  /* Aytza Brand Colors */
+  --color-brand-gold: #F2A51B;
+  --color-brand-purple: #6D275D;
+  --color-brand-blue: #526FC8;
+  --color-brand-teal: #05878A;
+  --color-brand-red: #C50143;
 
   /* Color Palette - Light Theme */
   --color-bg-primary: #ffffff;
@@ -22,23 +31,23 @@
   --color-border-subtle: #eeeeee;
   --color-border-focus: #d0d0d0;
 
-  /* Orange Accent */
-  --color-accent-primary: #ff6b00;
-  --color-accent-secondary: #ff8c33;
-  --color-accent-muted: rgba(255, 107, 0, 0.1);
-  --color-accent-hover: rgba(255, 107, 0, 0.15);
+  /* Primary Accent - Gold */
+  --color-accent-primary: var(--color-brand-gold);
+  --color-accent-secondary: #F4B84A;
+  --color-accent-muted: rgba(242, 165, 27, 0.1);
+  --color-accent-hover: rgba(242, 165, 27, 0.15);
 
   /* Status Colors */
-  --color-success: #22c55e;
-  --color-warning: #eab308;
-  --color-error: #ef4444;
-  --color-info: #3b82f6;
+  --color-success: var(--color-brand-teal);
+  --color-warning: var(--color-brand-gold);
+  --color-error: var(--color-brand-red);
+  --color-info: var(--color-brand-blue);
 
   /* Priority Colors */
   --color-priority-low: #888888;
   --color-priority-medium: #555555;
-  --color-priority-high: #ff6b00;
-  --color-priority-critical: #ef4444;
+  --color-priority-high: var(--color-brand-gold);
+  --color-priority-critical: var(--color-brand-red);
 
   /* Spacing */
   --space-1: 4px;
