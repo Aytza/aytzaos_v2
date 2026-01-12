@@ -10,7 +10,37 @@
 }
 
 .header-left {
-  /* No flex grow - only take space needed for logo */
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+/* Header Navigation */
+.header-nav {
+  display: flex;
+  gap: var(--space-1);
+}
+
+.header-nav-link {
+  padding: var(--space-2) var(--space-3);
+  background: transparent;
+  border: none;
+  border-radius: var(--border-radius);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.header-nav-link:hover {
+  color: var(--color-text-primary);
+  background: var(--color-bg-tertiary);
+}
+
+.header-nav-link.active {
+  color: var(--color-accent-primary);
+  background: var(--color-accent-muted);
 }
 
 /* Weft Logo */

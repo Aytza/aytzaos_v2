@@ -6,6 +6,8 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { Header } from './components/Header/Header';
 import { Home } from './components/Home/Home';
 import { Board } from './components/Board/Board';
+import { Roadmap } from './components/Roadmap';
+import { BugBoard } from './components/BugBoard';
 import { GitHubCallback } from './components/GitHubCallback';
 import { GoogleCallback } from './components/GoogleCallback';
 import { MCPOAuthCallback } from './components/MCP/MCPOAuthCallback';
@@ -116,6 +118,8 @@ function AppContent() {
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/board/:boardId" element={<Board />} />
+            <Route path="/roadmap" element={<Roadmap />} />
+            <Route path="/bugs" element={<BugBoard />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </main>
