@@ -25,12 +25,12 @@ export class MCPService {
   // ============================================
 
   /**
-   * Get all MCP servers for a board
+   * Get all MCP servers for a project
    */
-  getMCPServers(boardId: string): Response {
+  getMCPServers(projectId: string): Response {
     const servers = this.sql.exec(
-      'SELECT * FROM mcp_servers WHERE board_id = ? ORDER BY created_at DESC',
-      boardId
+      'SELECT * FROM mcp_servers WHERE project_id = ? ORDER BY created_at DESC',
+      projectId
     ).toArray();
 
     return jsonResponse({
@@ -61,7 +61,7 @@ export class MCPService {
   /**
    * Create a new MCP server
    */
-  createMCPServer(boardId: string, data: {
+  createMCPServer(projectId: string, data: {
     name: string;
     type: 'remote' | 'hosted';
     endpoint?: string;
@@ -75,10 +75,10 @@ export class MCPService {
     const now = new Date().toISOString();
 
     this.sql.exec(
-      `INSERT INTO mcp_servers (id, board_id, name, type, endpoint, auth_type, credential_id, enabled, status, transport_type, url_patterns, created_at, updated_at)
+      `INSERT INTO mcp_servers (id, project_id, name, type, endpoint, auth_type, credential_id, enabled, status, transport_type, url_patterns, created_at, updated_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?)`,
       id,
-      boardId,
+      projectId,
       data.name,
       data.type,
       data.endpoint || null,
@@ -97,7 +97,7 @@ export class MCPService {
   /**
    * Create an account-based MCP server (Gmail, Google Docs, etc.)
    */
-  async createAccountMCP(boardId: string, data: {
+  async createAccountMCP(projectId: string, data: {
     accountId: string;
     mcpId: string;
   }): Promise<Response> {
@@ -119,7 +119,7 @@ export class MCPService {
       }, 400);
     }
 
-    const credentialId = this.credentialService.findCredentialId(boardId, account.credentialType);
+    const credentialId = this.credentialService.findCredentialId(projectId, account.credentialType);
     if (!credentialId) {
       return jsonResponse({
         success: false,
@@ -129,8 +129,8 @@ export class MCPService {
 
     // Check if MCP already exists
     const existing = this.sql.exec(
-      'SELECT id FROM mcp_servers WHERE board_id = ? AND name = ?',
-      boardId,
+      'SELECT id FROM mcp_servers WHERE project_id = ? AND name = ?',
+      projectId,
       mcpDef.name
     ).toArray()[0];
 
@@ -146,10 +146,10 @@ export class MCPService {
     const now = new Date().toISOString();
 
     this.sql.exec(
-      `INSERT INTO mcp_servers (id, board_id, name, type, endpoint, auth_type, credential_id, enabled, status, url_patterns, created_at, updated_at)
+      `INSERT INTO mcp_servers (id, project_id, name, type, endpoint, auth_type, credential_id, enabled, status, url_patterns, created_at, updated_at)
        VALUES (?, ?, ?, 'hosted', NULL, 'oauth', ?, 1, 'connected', ?, ?, ?)`,
       id,
-      boardId,
+      projectId,
       mcpDef.name,
       credentialId,
       mcpDef.urlPatterns ? JSON.stringify(mcpDef.urlPatterns) : null,

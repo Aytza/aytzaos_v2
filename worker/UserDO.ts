@@ -2,7 +2,7 @@
  * UserDO - Durable Object for user data
  *
  * Keyed by user ID (from Cloudflare Access JWT `sub` claim)
- * Stores: user info, list of boards user has access to
+ * Stores: user info, list of projects user has access to
  *
  * Uses RPC for all operations (no HTTP routing needed)
  */
@@ -17,9 +17,9 @@ export interface UserInfo {
   updatedAt: string;
 }
 
-export interface UserBoard {
+export interface UserProject {
   id: string;
-  boardId: string;
+  projectId: string;
   name: string;
   role: string;
   createdAt: string;
@@ -49,13 +49,36 @@ export class UserDO extends DurableObject<Env> {
         updated_at TEXT NOT NULL
       );
 
-      CREATE TABLE IF NOT EXISTS user_boards (
-        board_id TEXT PRIMARY KEY,
+      CREATE TABLE IF NOT EXISTS user_projects (
+        project_id TEXT PRIMARY KEY,
         name TEXT NOT NULL,
         role TEXT NOT NULL DEFAULT 'owner',
         added_at TEXT NOT NULL
       );
     `);
+
+    // Migrate old user_boards table if it exists
+    this.migrateUserBoards();
+  }
+
+  private migrateUserBoards(): void {
+    try {
+      const oldBoards = this.sql.exec('SELECT * FROM user_boards').toArray();
+      if (oldBoards.length === 0) return;
+
+      const newProjects = this.sql.exec('SELECT project_id FROM user_projects').toArray();
+      if (newProjects.length > 0) return; // Already migrated
+
+      for (const board of oldBoards) {
+        const b = board as { board_id: string; name: string; role: string; added_at: string };
+        this.sql.exec(
+          'INSERT INTO user_projects (project_id, name, role, added_at) VALUES (?, ?, ?, ?)',
+          b.board_id, b.name, b.role, b.added_at
+        );
+      }
+    } catch {
+      // Old table doesn't exist, nothing to migrate
+    }
   }
 
   // ============================================
@@ -114,32 +137,37 @@ export class UserDO extends DurableObject<Env> {
   }
 
   /**
-   * Get user's boards
+   * Get user's projects
    */
-  async getBoards(): Promise<UserBoard[]> {
-    const boards = this.sql.exec(
-      'SELECT board_id, name, role, added_at FROM user_boards ORDER BY added_at DESC'
-    ).toArray() as Array<{ board_id: string; name: string; role: string; added_at: string }>;
+  async getProjects(): Promise<UserProject[]> {
+    const projects = this.sql.exec(
+      'SELECT project_id, name, role, added_at FROM user_projects ORDER BY added_at DESC'
+    ).toArray() as Array<{ project_id: string; name: string; role: string; added_at: string }>;
 
-    return boards.map((b) => ({
-      id: b.board_id,
-      boardId: b.board_id,
-      name: b.name,
-      role: b.role,
-      createdAt: b.added_at,
-      addedAt: b.added_at,
+    return projects.map((p) => ({
+      id: p.project_id,
+      projectId: p.project_id,
+      name: p.name,
+      role: p.role,
+      createdAt: p.added_at,
+      addedAt: p.added_at,
     }));
   }
 
+  // Alias for backward compatibility during migration
+  async getBoards(): Promise<UserProject[]> {
+    return this.getProjects();
+  }
+
   /**
-   * Add a board to user's list
+   * Add a project to user's list
    */
-  async addBoard(boardId: string, name: string, role?: string): Promise<{ success: boolean }> {
+  async addProject(projectId: string, name: string, role?: string): Promise<{ success: boolean }> {
     const now = new Date().toISOString();
 
     const existing = this.sql.exec(
-      'SELECT board_id FROM user_boards WHERE board_id = ?',
-      boardId
+      'SELECT project_id FROM user_projects WHERE project_id = ?',
+      projectId
     ).toArray()[0];
 
     if (existing) {
@@ -147,8 +175,8 @@ export class UserDO extends DurableObject<Env> {
     }
 
     this.sql.exec(
-      'INSERT INTO user_boards (board_id, name, role, added_at) VALUES (?, ?, ?, ?)',
-      boardId,
+      'INSERT INTO user_projects (project_id, name, role, added_at) VALUES (?, ?, ?, ?)',
+      projectId,
       name,
       role || 'owner',
       now
@@ -157,39 +185,54 @@ export class UserDO extends DurableObject<Env> {
     return { success: true };
   }
 
-  /**
-   * Check if user has access to a board
-   */
-  async hasAccess(boardId: string): Promise<AccessResult> {
-    const board = this.sql.exec(
-      'SELECT board_id, role FROM user_boards WHERE board_id = ?',
-      boardId
-    ).toArray()[0] as { board_id: string; role: string } | undefined;
-
-    if (!board) {
-      return { hasAccess: false };
-    }
-
-    return { hasAccess: true, role: board.role };
+  // Alias for backward compatibility during migration
+  async addBoard(projectId: string, name: string, role?: string): Promise<{ success: boolean }> {
+    return this.addProject(projectId, name, role);
   }
 
   /**
-   * Update board name in user's list
+   * Check if user has access to a project
    */
-  async updateBoardName(boardId: string, name: string): Promise<{ success: boolean }> {
+  async hasAccess(projectId: string): Promise<AccessResult> {
+    const project = this.sql.exec(
+      'SELECT project_id, role FROM user_projects WHERE project_id = ?',
+      projectId
+    ).toArray()[0] as { project_id: string; role: string } | undefined;
+
+    if (!project) {
+      return { hasAccess: false };
+    }
+
+    return { hasAccess: true, role: project.role };
+  }
+
+  /**
+   * Update project name in user's list
+   */
+  async updateProjectName(projectId: string, name: string): Promise<{ success: boolean }> {
     this.sql.exec(
-      'UPDATE user_boards SET name = ? WHERE board_id = ?',
+      'UPDATE user_projects SET name = ? WHERE project_id = ?',
       name,
-      boardId
+      projectId
     );
     return { success: true };
   }
 
+  // Alias for backward compatibility during migration
+  async updateBoardName(projectId: string, name: string): Promise<{ success: boolean }> {
+    return this.updateProjectName(projectId, name);
+  }
+
   /**
-   * Remove a board from user's list
+   * Remove a project from user's list
    */
-  async removeBoard(boardId: string): Promise<{ success: boolean }> {
-    this.sql.exec('DELETE FROM user_boards WHERE board_id = ?', boardId);
+  async removeProject(projectId: string): Promise<{ success: boolean }> {
+    this.sql.exec('DELETE FROM user_projects WHERE project_id = ?', projectId);
     return { success: true };
+  }
+
+  // Alias for backward compatibility during migration
+  async removeBoard(projectId: string): Promise<{ success: boolean }> {
+    return this.removeProject(projectId);
   }
 }
