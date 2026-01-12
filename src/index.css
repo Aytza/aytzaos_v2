@@ -31,11 +31,11 @@
   --color-border-subtle: #eeeeee;
   --color-border-focus: #d0d0d0;
 
-  /* Primary Accent - Gold */
-  --color-accent-primary: var(--color-brand-gold);
-  --color-accent-secondary: #F4B84A;
-  --color-accent-muted: rgba(242, 165, 27, 0.1);
-  --color-accent-hover: rgba(242, 165, 27, 0.15);
+  /* Primary Accent - Purple */
+  --color-accent-primary: var(--color-brand-purple);
+  --color-accent-secondary: #8B3A78;
+  --color-accent-muted: rgba(109, 39, 93, 0.1);
+  --color-accent-hover: rgba(109, 39, 93, 0.15);
 
   /* Status Colors */
   --color-success: var(--color-brand-teal);
