@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, type DragEvent, type MouseEvent } from 'react';
 import type { Task } from '../../types';
-import { useBoard } from '../../context/BoardContext';
+import { useProject } from '../../context/ProjectContext';
 import { TaskModal } from './TaskModal';
 import { WorkflowBadge } from '../Workflow';
 import './TaskCard.css';
@@ -26,7 +26,7 @@ interface ContextMenuState {
 }
 
 export function TaskCard({ task }: TaskCardProps) {
-  const { setDragState, moveTask, getTasksByColumn, deleteTask, activeBoard, getTaskWorkflowPlan } = useBoard();
+  const { setDragState, moveTask, getTasksByColumn, deleteTask, activeProject, getTaskWorkflowPlan } = useProject();
   const [isDragging, setIsDragging] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [contextMenu, setContextMenu] = useState<ContextMenuState>({ isOpen: false, x: 0, y: 0 });
@@ -84,7 +84,7 @@ export function TaskCard({ task }: TaskCardProps) {
     e.stopPropagation();
 
     const draggedTaskId = e.dataTransfer.getData('text/plain');
-    if (draggedTaskId && draggedTaskId !== task.id) {
+    if (draggedTaskId && draggedTaskId !== task.id && task.columnId) {
       const tasks = getTasksByColumn(task.columnId);
       const targetIndex = tasks.findIndex((t) => t.id === task.id);
       await moveTask(draggedTaskId, task.columnId, targetIndex);
@@ -130,7 +130,7 @@ export function TaskCard({ task }: TaskCardProps) {
   }, [contextMenu.isOpen]);
 
   // Get other columns for move menu
-  const otherColumns = activeBoard?.columns.filter((c) => c.id !== task.columnId) || [];
+  const otherColumns = activeProject?.columns.filter((c: { id: string }) => c.id !== task.columnId) || [];
 
   return (
     <>

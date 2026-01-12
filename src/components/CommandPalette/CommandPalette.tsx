@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useBoard } from '../../context/BoardContext';
+import { useProject } from '../../context/ProjectContext';
 import './CommandPalette.css';
 
 interface CommandPaletteProps {
@@ -19,7 +19,7 @@ type ResultItem = {
 
 export function CommandPalette({ isOpen, onClose, onNewTask }: CommandPaletteProps) {
   const navigate = useNavigate();
-  const { boards, activeBoard } = useBoard();
+  const { projects, activeProject } = useProject();
   const [query, setQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -34,46 +34,46 @@ export function CommandPalette({ isOpen, onClose, onNewTask }: CommandPalettePro
         id: 'new-task-1',
         type: 'action',
         title: 'New task in first column',
-        subtitle: activeBoard?.columns[0]?.name,
+        subtitle: activeProject?.columns[0]?.name,
         action: () => { onNewTask(0); onClose(); },
       },
     ];
 
-    if (activeBoard && activeBoard.columns.length > 1) {
+    if (activeProject && activeProject.columns.length > 1) {
       actions.push({
         id: 'new-task-2',
         type: 'action',
         title: 'New task in second column',
-        subtitle: activeBoard.columns[1]?.name,
+        subtitle: activeProject.columns[1]?.name,
         action: () => { onNewTask(1); onClose(); },
       });
     }
 
-    if (activeBoard && activeBoard.columns.length > 2) {
+    if (activeProject && activeProject.columns.length > 2) {
       actions.push({
         id: 'new-task-3',
         type: 'action',
         title: 'New task in third column',
-        subtitle: activeBoard.columns[2]?.name,
+        subtitle: activeProject.columns[2]?.name,
         action: () => { onNewTask(2); onClose(); },
       });
     }
 
-    // Boards
-    const boardResults: ResultItem[] = boards.map((board) => ({
-      id: `board-${board.id}`,
+    // Projects
+    const projectResults: ResultItem[] = projects.map((project) => ({
+      id: `project-${project.id}`,
       type: 'board' as const,
-      title: board.name,
-      subtitle: board.id === activeBoard?.id ? 'Current board' : 'Switch to board',
+      title: project.name,
+      subtitle: project.id === activeProject?.id ? 'Current project' : 'Switch to project',
       action: () => {
-        navigate(`/board/${board.id}`);
+        navigate(`/project/${project.id}`);
         onClose();
       },
     }));
 
-    // Tasks from active board
-    const taskResults: ResultItem[] = activeBoard?.tasks.map((task) => {
-      const column = activeBoard.columns.find((c) => c.id === task.columnId);
+    // Tasks from active project
+    const taskResults: ResultItem[] = activeProject?.tasks.map((task) => {
+      const column = activeProject.columns.find((c: { id: string }) => c.id === task.columnId);
       return {
         id: `task-${task.id}`,
         type: 'task' as const,
@@ -88,7 +88,7 @@ export function CommandPalette({ isOpen, onClose, onNewTask }: CommandPalettePro
 
     // Filter by query
     if (q) {
-      const filtered = [...actions, ...boardResults, ...taskResults].filter(
+      const filtered = [...actions, ...projectResults, ...taskResults].filter(
         (item) =>
           item.title.toLowerCase().includes(q) ||
           item.subtitle?.toLowerCase().includes(q)
@@ -96,9 +96,9 @@ export function CommandPalette({ isOpen, onClose, onNewTask }: CommandPalettePro
       return filtered;
     }
 
-    // Default: show actions first, then boards
-    return [...actions, ...boardResults.slice(0, 5)];
-  }, [query, boards, activeBoard, navigate, onClose, onNewTask]);
+    // Default: show actions first, then projects
+    return [...actions, ...projectResults.slice(0, 5)];
+  }, [query, projects, activeProject, navigate, onClose, onNewTask]);
 
   const results = getResults();
 
@@ -158,7 +158,7 @@ export function CommandPalette({ isOpen, onClose, onNewTask }: CommandPalettePro
             ref={inputRef}
             type="text"
             className="palette-input"
-            placeholder="Search boards, tasks, or actions..."
+            placeholder="Search projects, tasks, or actions..."
             value={query}
             onChange={(e) => {
               setQuery(e.target.value);

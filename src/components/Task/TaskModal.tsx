@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef, type ClipboardEvent } from 'react';
 import type { Task, WorkflowPlan, WorkflowArtifact } from '../../types';
-import { useBoard } from '../../context/BoardContext';
+import { useProject } from '../../context/ProjectContext';
 import { Modal, Button, Input, RichTextEditor } from '../common';
 import { PlanReviewView, WorkflowProgress, EmailViewer } from '../Workflow';
 import { getApprovalView } from '../Approval';
@@ -19,13 +19,13 @@ interface TaskModalProps {
 
 export function TaskModal({ task, isOpen, onClose }: TaskModalProps) {
   const {
-    activeBoard,
+    activeProject,
     updateTask,
     deleteTask,
     getWorkflowPlan: getWorkflowPlanFromContext,
     updateWorkflowPlan: updateWorkflowPlanInContext,
     removeWorkflowPlan: removeWorkflowPlanFromContext,
-  } = useBoard();
+  } = useProject();
 
   const [currentView, setCurrentView] = useState<TaskModalView>('main');
   const [title, setTitle] = useState(task.title);
@@ -40,7 +40,7 @@ export function TaskModal({ task, isOpen, onClose }: TaskModalProps) {
   const [isRespondingToCheckpoint, setIsRespondingToCheckpoint] = useState(false);
   const [selectedEmailArtifact, setSelectedEmailArtifact] = useState<WorkflowArtifact | null>(null);
 
-  const { pendingUrl, isLoading: isCheckingUrl, checkUrl, clear: clearPendingUrl, toPillSyntax } = useUrlDetection(task.boardId);
+  const { pendingUrl, isLoading: isCheckingUrl, checkUrl, clear: clearPendingUrl, toPillSyntax } = useUrlDetection(task.projectId);
   const [pastedUrl, setPastedUrl] = useState<string | null>(null);
   const [pastedUrlEndIndex, setPastedUrlEndIndex] = useState<number | null>(null);
 
@@ -65,8 +65,8 @@ export function TaskModal({ task, isOpen, onClose }: TaskModalProps) {
         setIsGeneratingPlan(false);
       }
 
-      if (activeBoard) {
-        api.getTaskWorkflowPlan(activeBoard.id, task.id).then((result) => {
+      if (activeProject) {
+        api.getTaskWorkflowPlan(activeProject.id, task.id).then((result) => {
           if (result.success && result.data) {
             setWorkflowPlan(result.data);
             updateWorkflowPlanInContext(result.data);
@@ -77,7 +77,7 @@ export function TaskModal({ task, isOpen, onClose }: TaskModalProps) {
       wasOpenRef.current = false;
       setCurrentView('main');
     }
-  }, [isOpen, task.id, task.title, task.description, activeBoard, updateWorkflowPlanInContext]);
+  }, [isOpen, task.id, task.title, task.description, activeProject, updateWorkflowPlanInContext]);
 
   // Sync local state from context (WebSocket updates)
   useEffect(() => {
@@ -195,9 +195,9 @@ export function TaskModal({ task, isOpen, onClose }: TaskModalProps) {
       await updateTask(task.id, { title, description });
     }
 
-    if (!activeBoard) return;
+    if (!activeProject) return;
 
-    const result = await api.generateWorkflowPlan(activeBoard.id, task.id);
+    const result = await api.generateWorkflowPlan(activeProject.id, task.id);
 
     if (result.success && result.data) {
       setWorkflowPlan(result.data);
@@ -209,10 +209,10 @@ export function TaskModal({ task, isOpen, onClose }: TaskModalProps) {
   };
 
   const handleApprovePlan = async () => {
-    if (!workflowPlan || !activeBoard) return;
+    if (!workflowPlan || !activeProject) return;
 
     setIsApprovingPlan(true);
-    const result = await api.approveWorkflowPlan(activeBoard.id, workflowPlan.id);
+    const result = await api.approveWorkflowPlan(activeProject.id, workflowPlan.id);
     if (result.success && result.data) {
       setWorkflowPlan(result.data);
       updateWorkflowPlanInContext(result.data);
@@ -224,15 +224,15 @@ export function TaskModal({ task, isOpen, onClose }: TaskModalProps) {
   };
 
   const handleDismissWorkflow = async () => {
-    if (!workflowPlan || !activeBoard) return;
-    await api.deleteWorkflowPlan(activeBoard.id, workflowPlan.id);
+    if (!workflowPlan || !activeProject) return;
+    await api.deleteWorkflowPlan(activeProject.id, workflowPlan.id);
     removeWorkflowPlanFromContext(workflowPlan.id);
     setWorkflowPlan(null);
   };
 
   const handleCancelWorkflow = async () => {
-    if (!workflowPlan || !activeBoard) return;
-    const result = await api.cancelWorkflow(activeBoard.id, workflowPlan.id);
+    if (!workflowPlan || !activeProject) return;
+    const result = await api.cancelWorkflow(activeProject.id, workflowPlan.id);
     if (result.success && result.data) {
       setWorkflowPlan(result.data);
       updateWorkflowPlanInContext(result.data);
@@ -240,9 +240,9 @@ export function TaskModal({ task, isOpen, onClose }: TaskModalProps) {
   };
 
   const handleApproveCheckpoint = async (responseData?: Record<string, unknown>) => {
-    if (!workflowPlan || !activeBoard) return;
+    if (!workflowPlan || !activeProject) return;
     setIsRespondingToCheckpoint(true);
-    const result = await api.resolveWorkflowCheckpoint(activeBoard.id, workflowPlan.id, {
+    const result = await api.resolveWorkflowCheckpoint(activeProject.id, workflowPlan.id, {
       action: 'approve',
       data: responseData,
     });
@@ -257,9 +257,9 @@ export function TaskModal({ task, isOpen, onClose }: TaskModalProps) {
   };
 
   const handleRequestChanges = async (feedback: string) => {
-    if (!workflowPlan || !activeBoard) return;
+    if (!workflowPlan || !activeProject) return;
     setIsRespondingToCheckpoint(true);
-    const result = await api.resolveWorkflowCheckpoint(activeBoard.id, workflowPlan.id, {
+    const result = await api.resolveWorkflowCheckpoint(activeProject.id, workflowPlan.id, {
       action: 'request_changes',
       feedback,
     });
@@ -274,9 +274,9 @@ export function TaskModal({ task, isOpen, onClose }: TaskModalProps) {
   };
 
   const handleCancelCheckpoint = async () => {
-    if (!workflowPlan || !activeBoard) return;
+    if (!workflowPlan || !activeProject) return;
     setIsRespondingToCheckpoint(true);
-    const result = await api.resolveWorkflowCheckpoint(activeBoard.id, workflowPlan.id, { action: 'cancel' });
+    const result = await api.resolveWorkflowCheckpoint(activeProject.id, workflowPlan.id, { action: 'cancel' });
     if (result.success && result.data) {
       setWorkflowPlan(result.data);
       updateWorkflowPlanInContext(result.data);
@@ -402,7 +402,7 @@ export function TaskModal({ task, isOpen, onClose }: TaskModalProps) {
             </div>
           ) : (
             <AgentSection
-              boardId={task.boardId}
+              projectId={task.projectId}
               onRun={handleStartAgent}
               disabled={!description.trim()}
               isRunning={isGeneratingPlan}

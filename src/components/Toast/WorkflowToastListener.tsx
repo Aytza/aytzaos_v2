@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { useBoard } from '../../context/BoardContext';
+import { useProject } from '../../context/ProjectContext';
 import { useToast } from '../../context/ToastContext';
 import type { WorkflowPlan, Task } from '../../types';
 
@@ -8,7 +8,7 @@ import type { WorkflowPlan, Task } from '../../types';
  * Renders nothing - it's just a listener.
  */
 export function WorkflowToastListener() {
-  const { workflowPlans, activeBoard } = useBoard();
+  const { workflowPlans, activeProject } = useProject();
   const { addToast } = useToast();
   const prevStatusesRef = useRef<Record<string, string>>({});
 
@@ -26,7 +26,7 @@ export function WorkflowToastListener() {
       }
 
       // Get task title for the message
-      const taskTitle = getTaskTitle(plan, activeBoard?.tasks || null);
+      const taskTitle = getTaskTitle(plan, activeProject?.tasks || null);
 
       // Show toast based on status transition
       if (currentStatus === 'completed') {
@@ -60,7 +60,7 @@ export function WorkflowToastListener() {
       newStatuses[plan.id] = plan.status;
     }
     prevStatusesRef.current = newStatuses;
-  }, [workflowPlans, activeBoard, addToast]);
+  }, [workflowPlans, activeProject, addToast]);
 
   return null;
 }

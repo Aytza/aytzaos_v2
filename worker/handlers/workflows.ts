@@ -27,7 +27,7 @@ export async function handleGeneratePlan(
   }
 
   // Get the task details
-  let task: { id: string; boardId: string; title: string; description?: string | null };
+  let task: { id: string; projectId?: string | null; title: string; description?: string | null };
   try {
     task = await boardStub.getTask(taskId);
   } catch {
@@ -43,7 +43,7 @@ export async function handleGeneratePlan(
   try {
     await boardStub.createWorkflowPlan(taskId, {
       id: planId,
-      boardId,
+      projectId: boardId,
       // status is set to 'executing' by default
     });
   } catch {
@@ -74,7 +74,7 @@ export async function handleGeneratePlan(
     const workflowParams: AgentWorkflowParams = {
       planId,
       taskId,
-      boardId,
+      projectId: boardId,
       taskDescription,
       anthropicApiKey,
     };
@@ -117,7 +117,7 @@ export async function handleResolveCheckpoint(
   }
 
   // Get the plan
-  let plan: { id: string; taskId: string; boardId: string; status: string };
+  let plan: { id: string; taskId: string; projectId: string; status: string };
   try {
     plan = await boardStub.getWorkflowPlan(planId);
   } catch {

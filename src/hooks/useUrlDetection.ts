@@ -45,17 +45,17 @@ function toPillSyntax(pending: PendingUrl): string {
 /**
  * Hook for URL detection and metadata fetching
  */
-export function useUrlDetection(boardId: string): UseUrlDetectionResult {
+export function useUrlDetection(projectId?: string): UseUrlDetectionResult {
   const [pendingUrl, setPendingUrl] = useState<PendingUrl | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
   const checkUrl = useCallback(
     async (url: string): Promise<boolean> => {
-      if (!boardId || !url) return false;
+      if (!projectId || !url) return false;
 
       setIsLoading(true);
       try {
-        const result = await getLinkMetadata(boardId, url);
+        const result = await getLinkMetadata(projectId, url);
         if (result.success && result.data) {
           setPendingUrl({ url, metadata: result.data });
           return true;
@@ -67,7 +67,7 @@ export function useUrlDetection(boardId: string): UseUrlDetectionResult {
         setIsLoading(false);
       }
     },
-    [boardId]
+    [projectId]
   );
 
   const clear = useCallback(() => {

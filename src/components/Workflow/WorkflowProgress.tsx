@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Button } from '../common';
 import type { WorkflowPlan, WorkflowStep as WorkflowStepType, WorkflowArtifact } from '../../types';
-import { useBoard } from '../../context/BoardContext';
+import { useProject } from '../../context/ProjectContext';
 import './Workflow.css';
 
 interface WorkflowProgressProps {
@@ -19,7 +19,7 @@ export function WorkflowProgress({
   onReviewCheckpoint,
   onViewEmail,
 }: WorkflowProgressProps) {
-  const { getWorkflowLogs, fetchWorkflowLogs } = useBoard();
+  const { getWorkflowLogs, fetchWorkflowLogs } = useProject();
   const [expanded, setExpanded] = useState(false);
   const [logsExpanded, setLogsExpanded] = useState(false);
   const [logsLoading, setLogsLoading] = useState(true);
@@ -33,11 +33,11 @@ export function WorkflowProgress({
 
   useEffect(() => {
     const loadLogs = async () => {
-      await fetchWorkflowLogs(plan.boardId, plan.id);
+      await fetchWorkflowLogs(plan.projectId, plan.id);
       setLogsLoading(false);
     };
     loadLogs();
-  }, [plan.boardId, plan.id, fetchWorkflowLogs]);
+  }, [plan.projectId, plan.id, fetchWorkflowLogs]);
 
   useEffect(() => {
     if (expanded && logsExpanded) {

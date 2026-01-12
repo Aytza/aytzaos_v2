@@ -467,7 +467,7 @@ export class BoardService {
         if (match) {
           try {
             const metadata = await this.fetchLinkMetadataFromMCP(
-              boardId,
+              projectId,
               server.name,
               server.credentialId,
               patternDef.fetchTool,

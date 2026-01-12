@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { Modal, Input, Button } from '../common';
 import { AccountsSection } from './AccountsSection';
 import { MCPSection } from './MCPSection';
-import { useBoard } from '../../context/BoardContext';
+import { useProject } from '../../context/ProjectContext';
 import { CREDENTIAL_TYPES, type BoardCredential } from '../../types';
 import * as api from '../../api/client';
 import './BoardSettings.css';
@@ -14,7 +14,7 @@ interface BoardSettingsProps {
 }
 
 export function BoardSettings({ isOpen, onClose }: BoardSettingsProps) {
-  const { activeBoard } = useBoard();
+  const { activeProject } = useProject();
   const [searchParams, setSearchParams] = useSearchParams();
   const [credentials, setCredentials] = useState<BoardCredential[]>([]);
   const [loading, setLoading] = useState(false);
@@ -33,7 +33,7 @@ export function BoardSettings({ isOpen, onClose }: BoardSettingsProps) {
     const googleError = searchParams.get('google_error');
 
     if (githubConnected === 'connected') {
-      if (activeBoard) {
+      if (activeProject) {
         loadCredentials();
       }
       searchParams.delete('github');
@@ -47,7 +47,7 @@ export function BoardSettings({ isOpen, onClose }: BoardSettingsProps) {
     }
 
     if (googleConnected === 'connected') {
-      if (activeBoard) {
+      if (activeProject) {
         loadCredentials();
       }
       searchParams.delete('google');
@@ -59,30 +59,30 @@ export function BoardSettings({ isOpen, onClose }: BoardSettingsProps) {
       searchParams.delete('google_error');
       setSearchParams(searchParams, { replace: true });
     }
-  }, [searchParams, setSearchParams, activeBoard]);
+  }, [searchParams, setSearchParams, activeProject]);
 
   const loadCredentials = useCallback(async () => {
-    if (!activeBoard) return;
+    if (!activeProject) return;
     setLoading(true);
     setError(null);
-    const result = await api.getCredentials(activeBoard.id);
+    const result = await api.getCredentials(activeProject.id);
     if (result.success && result.data) {
       setCredentials(result.data);
     } else {
       setError(result.error?.message || 'Failed to load credentials');
     }
     setLoading(false);
-  }, [activeBoard]);
+  }, [activeProject]);
 
   useEffect(() => {
-    if (isOpen && activeBoard) {
+    if (isOpen && activeProject) {
       loadCredentials();
     }
-  }, [isOpen, activeBoard, loadCredentials]);
+  }, [isOpen, activeProject, loadCredentials]);
 
   const handleAddApiKey = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!activeBoard || !apiKeyInput.trim()) return;
+    if (!activeProject || !apiKeyInput.trim()) return;
 
     setSaving(true);
     setError(null);
@@ -90,10 +90,10 @@ export function BoardSettings({ isOpen, onClose }: BoardSettingsProps) {
     // Delete any existing Anthropic API key first (replace behavior)
     const existingKey = credentials.find(c => c.type === CREDENTIAL_TYPES.ANTHROPIC_API_KEY);
     if (existingKey) {
-      await api.deleteCredential(activeBoard.id, existingKey.id);
+      await api.deleteCredential(activeProject.id, existingKey.id);
     }
 
-    const result = await api.createCredential(activeBoard.id, {
+    const result = await api.createCredential(activeProject.id, {
       type: CREDENTIAL_TYPES.ANTHROPIC_API_KEY,
       name: apiKeyName.trim() || 'Anthropic API Key',
       value: apiKeyInput.trim(),
@@ -115,9 +115,9 @@ export function BoardSettings({ isOpen, onClose }: BoardSettingsProps) {
   };
 
   const handleDeleteCredential = async (credentialId: string) => {
-    if (!activeBoard) return;
+    if (!activeProject) return;
 
-    const result = await api.deleteCredential(activeBoard.id, credentialId);
+    const result = await api.deleteCredential(activeProject.id, credentialId);
     if (result.success) {
       setCredentials((prev) => prev.filter((c) => c.id !== credentialId));
     } else {
@@ -126,13 +126,13 @@ export function BoardSettings({ isOpen, onClose }: BoardSettingsProps) {
   };
 
   const handleConnect = async (provider: 'github' | 'google') => {
-    if (!activeBoard) return;
+    if (!activeProject) return;
 
     setConnecting(provider);
     setError(null);
 
     const getUrl = provider === 'github' ? api.getGitHubOAuthUrl : api.getGoogleOAuthUrl;
-    const result = await getUrl(activeBoard.id);
+    const result = await getUrl(activeProject.id);
 
     if (result.success && result.data) {
       window.location.href = result.data.url;
@@ -144,10 +144,10 @@ export function BoardSettings({ isOpen, onClose }: BoardSettingsProps) {
 
   const anthropicKeys = credentials.filter((c) => c.type === CREDENTIAL_TYPES.ANTHROPIC_API_KEY);
 
-  if (!activeBoard) return null;
+  if (!activeProject) return null;
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Board Settings" width="lg">
+    <Modal isOpen={isOpen} onClose={onClose} title="Project Settings" width="lg">
       <div className="settings-content">
         {error && <div className="settings-error">{error}</div>}
 
@@ -269,7 +269,7 @@ export function BoardSettings({ isOpen, onClose }: BoardSettingsProps) {
           </div>
 
           <MCPSection
-            boardId={activeBoard.id}
+            projectId={activeProject.id}
             credentials={credentials}
             onConnectGitHub={() => handleConnect('github')}
             connectingGitHub={connecting === 'github'}

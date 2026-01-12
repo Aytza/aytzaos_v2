@@ -45,10 +45,10 @@ export function MCPOAuthCallback() {
 
       // Get stored OAuth context
       const serverId = sessionStorage.getItem('mcp_oauth_server_id');
-      const boardId = sessionStorage.getItem('mcp_oauth_board_id');
+      const projectId = sessionStorage.getItem('mcp_oauth_project_id');
       const storedState = sessionStorage.getItem('mcp_oauth_state');
 
-      if (!serverId || !boardId) {
+      if (!serverId || !projectId) {
         setStatus('error');
         setError('OAuth session data not found. Please try again.');
         return;
@@ -63,11 +63,11 @@ export function MCPOAuthCallback() {
 
       // Exchange code for tokens
       const redirectUri = `${window.location.origin}/mcp/oauth/callback`;
-      const result = await api.exchangeMCPOAuthCode(boardId, serverId, code, state, redirectUri);
+      const result = await api.exchangeMCPOAuthCode(projectId, serverId, code, state, redirectUri);
 
       // Clear stored OAuth context only after exchange attempt
       sessionStorage.removeItem('mcp_oauth_server_id');
-      sessionStorage.removeItem('mcp_oauth_board_id');
+      sessionStorage.removeItem('mcp_oauth_project_id');
       sessionStorage.removeItem('mcp_oauth_state');
 
       if (!result.success) {
@@ -78,9 +78,9 @@ export function MCPOAuthCallback() {
 
       setStatus('success');
 
-      // Redirect back to board after a short delay
+      // Redirect back to project after a short delay
       setTimeout(() => {
-        navigate(`/board/${boardId}?mcp_connected=true`);
+        navigate(`/project/${projectId}?mcp_connected=true`);
       }, 1500);
     }
 

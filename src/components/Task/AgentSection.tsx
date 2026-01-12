@@ -12,7 +12,7 @@ import * as api from '../../api/client';
 import './AgentSection.css';
 
 interface AgentSectionProps {
-  boardId: string;
+  projectId?: string;
   onRun: () => void;
   disabled?: boolean;
   isRunning?: boolean;
@@ -46,7 +46,7 @@ const BUILTIN_TOOLS = [
   { id: 'sandbox', name: 'Sandbox' },
 ];
 
-export function AgentSection({ boardId, onRun, disabled, isRunning }: AgentSectionProps) {
+export function AgentSection({ projectId, onRun, disabled, isRunning }: AgentSectionProps) {
   const [mcpServers, setMcpServers] = useState<MCPServer[]>([]);
   const [loading, setLoading] = useState(true);
   const [tooltipPos, setTooltipPos] = useState<{ x: number; y: number } | null>(null);
@@ -59,14 +59,18 @@ export function AgentSection({ boardId, onRun, disabled, isRunning }: AgentSecti
 
   useEffect(() => {
     async function loadServers() {
-      const result = await api.getMCPServers(boardId);
+      if (!projectId) {
+        setLoading(false);
+        return;
+      }
+      const result = await api.getMCPServers(projectId);
       if (result.success && result.data) {
         setMcpServers(result.data);
       }
       setLoading(false);
     }
     loadServers();
-  }, [boardId]);
+  }, [projectId]);
 
   // Combine built-in tools with enabled MCPs only
   const allTools = [

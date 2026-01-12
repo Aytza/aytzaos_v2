@@ -37,7 +37,7 @@ const DEFAULT_MODEL = 'claude-sonnet-4-5-20250929';
 export interface AgentWorkflowParams {
   planId: string;
   taskId: string;
-  boardId: string;
+  projectId: string;
   taskDescription: string;
   anthropicApiKey: string;
 }
@@ -143,10 +143,10 @@ function formatToolName(toolName: string): string {
 export class AgentWorkflow extends WorkflowEntrypoint<WorkflowEnv, AgentWorkflowParams> {
   async run(event: WorkflowEvent<AgentWorkflowParams>, step: WorkflowStep) {
     const params = event.payload;
-    const { planId, boardId, taskDescription, anthropicApiKey } = params;
+    const { planId, projectId, taskDescription, anthropicApiKey } = params;
 
     const getBoardStub = (): DurableObjectStub<BoardDO> => {
-      const doId = this.env.BOARD_DO.idFromName(boardId);
+      const doId = this.env.BOARD_DO.idFromName(projectId);
       return this.env.BOARD_DO.get(doId) as DurableObjectStub<BoardDO>;
     };
 
@@ -162,14 +162,14 @@ export class AgentWorkflow extends WorkflowEntrypoint<WorkflowEnv, AgentWorkflow
 
     const broadcastStreamChunk = async (turnIndex: number, text: string) => {
       const stub = getBoardStub();
-      stub.broadcastStreamChunk(boardId, planId, turnIndex, text);
+      stub.broadcastStreamChunk(projectId, planId, turnIndex, text);
     };
 
     try {
       const mcpConfigJson = await step.do('load-mcp-config', async () => {
         const stub = getBoardStub();
 
-        const rawServers = await stub.getMCPServers(boardId);
+        const rawServers = await stub.getMCPServers(projectId);
         const enabledServers = rawServers.filter((s: { enabled: boolean }) => s.enabled);
 
         const servers: MCPServerInfo[] = [];
@@ -178,7 +178,7 @@ export class AgentWorkflow extends WorkflowEntrypoint<WorkflowEnv, AgentWorkflow
 
           let accessToken: string | undefined;
           if (server.type === 'remote' && server.authType === 'oauth' && server.credentialId) {
-            const credData = await stub.getCredentialById(boardId, server.credentialId);
+            const credData = await stub.getCredentialById(projectId, server.credentialId);
             if (credData) {
               accessToken = credData.value;
             }
@@ -224,7 +224,7 @@ export class AgentWorkflow extends WorkflowEntrypoint<WorkflowEnv, AgentWorkflow
         };
 
         for (const account of getOAuthAccounts()) {
-          const credData = await stub.getCredentialFull(boardId, account.credentialType);
+          const credData = await stub.getCredentialFull(projectId, account.credentialType);
 
           const tokenKey = `${account.id}Token`;
           let accessToken = credData?.value;
@@ -256,7 +256,7 @@ export class AgentWorkflow extends WorkflowEntrypoint<WorkflowEnv, AgentWorkflow
                       Date.now() + (newTokenData.expires_in || 3600) * 1000
                     ).toISOString();
 
-                    await stub.updateCredentialValue(boardId, account.credentialType, newTokenData.access_token, { expires_at: newExpiresAt });
+                    await stub.updateCredentialValue(projectId, account.credentialType, newTokenData.access_token, { expires_at: newExpiresAt });
 
                     credentials[`${account.id}RefreshToken`] = metadata.refresh_token as string;
                     credentials[`${account.id}TokenExpiresAt`] = newExpiresAt;

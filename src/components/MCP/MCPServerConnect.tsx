@@ -5,7 +5,7 @@ import * as api from '../../api/client';
 import './MCPServerConnect.css';
 
 interface MCPServerConnectProps {
-  boardId: string;
+  projectId: string;
   onClose: () => void;
   onServerAdded: (server: MCPServer) => void;
   inline?: boolean;
@@ -13,7 +13,7 @@ interface MCPServerConnectProps {
 
 type TransportType = 'streamable-http' | 'sse';
 
-export function MCPServerConnect({ boardId, onClose, onServerAdded, inline }: MCPServerConnectProps) {
+export function MCPServerConnect({ projectId, onClose, onServerAdded, inline }: MCPServerConnectProps) {
   const [name, setName] = useState('');
   const [endpoint, setEndpoint] = useState('');
   const [transportType, setTransportType] = useState<TransportType>('streamable-http');
@@ -24,7 +24,7 @@ export function MCPServerConnect({ boardId, onClose, onServerAdded, inline }: MC
   const startOAuthFlow = async (server: MCPServer) => {
     setStatusMessage('Discovering OAuth endpoints...');
 
-    const discoverResult = await api.discoverMCPOAuth(boardId, server.id);
+    const discoverResult = await api.discoverMCPOAuth(projectId, server.id);
     if (!discoverResult.success) {
       return { success: false, error: discoverResult.error?.message || 'OAuth discovery failed' };
     }
@@ -32,7 +32,7 @@ export function MCPServerConnect({ boardId, onClose, onServerAdded, inline }: MC
     setStatusMessage('Redirecting to authorization...');
 
     const redirectUri = `${window.location.origin}/mcp/oauth/callback`;
-    const urlResult = await api.getMCPOAuthUrl(boardId, server.id, redirectUri);
+    const urlResult = await api.getMCPOAuthUrl(projectId, server.id, redirectUri);
 
     if (!urlResult.success || !urlResult.data?.url) {
       return { success: false, error: urlResult.error?.message || 'Failed to get authorization URL' };
@@ -40,7 +40,7 @@ export function MCPServerConnect({ boardId, onClose, onServerAdded, inline }: MC
 
     // Store server ID for callback
     sessionStorage.setItem('mcp_oauth_server_id', server.id);
-    sessionStorage.setItem('mcp_oauth_board_id', boardId);
+    sessionStorage.setItem('mcp_oauth_project_id', projectId);
     sessionStorage.setItem('mcp_oauth_state', urlResult.data.state);
 
     // Redirect to OAuth authorization
@@ -58,7 +58,7 @@ export function MCPServerConnect({ boardId, onClose, onServerAdded, inline }: MC
 
     // Create the MCP server (start with no auth)
     setStatusMessage('Creating server...');
-    const result = await api.createMCPServer(boardId, {
+    const result = await api.createMCPServer(projectId, {
       name: name.trim(),
       type: 'remote',
       endpoint: endpoint.trim(),
@@ -76,7 +76,7 @@ export function MCPServerConnect({ boardId, onClose, onServerAdded, inline }: MC
 
     // Try connecting without auth first
     setStatusMessage('Connecting...');
-    const connectResult = await api.connectMCPServer(boardId, server.id);
+    const connectResult = await api.connectMCPServer(projectId, server.id);
 
     if (connectResult.success) {
       // Connected without auth
@@ -89,7 +89,7 @@ export function MCPServerConnect({ boardId, onClose, onServerAdded, inline }: MC
     setStatusMessage('Authentication required, trying OAuth...');
 
     // Update server to OAuth auth type
-    await api.updateMCPServer(boardId, server.id, { authType: 'oauth' });
+    await api.updateMCPServer(projectId, server.id, { authType: 'oauth' });
     server.authType = 'oauth';
 
     const oauthResult = await startOAuthFlow(server);
