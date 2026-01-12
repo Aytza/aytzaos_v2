@@ -1,12 +1,12 @@
-# Weft
+# Aytza
 
 Task management, but AI agents do your tasks.
 
-![Weft Screenshot](assets/screenshot.png)
+![Aytza Screenshot](assets/screenshot.png)
 
-## What is Weft?
+## What is Aytza?
 
-Weft is a personal task board where AI agents work on your tasks. Create a task, assign it to an agent, and it gets to work. Agents can read your emails, draft responses, update spreadsheets, create PRs, and write code.
+Aytza is a personal task board where AI agents work on your tasks. Create a task, assign it to an agent, and it gets to work. Agents can read your emails, draft responses, update spreadsheets, create PRs, and write code.
 
 Run as many agents in parallel as you want. Get notified when tasks complete or need your approval. All actions that mutate state (sending emails, creating PRs, modifying documents) require your approval before committing.
 
@@ -22,7 +22,7 @@ Run as many agents in parallel as you want. Get notified when tasks complete or 
 
 ## Architecture
 
-Weft runs entirely on [Cloudflare's Developer Platform](https://workers.cloudflare.com/):
+Aytza runs entirely on [Cloudflare's Developer Platform](https://workers.cloudflare.com/):
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
@@ -58,8 +58,8 @@ Weft runs entirely on [Cloudflare's Developer Platform](https://workers.cloudfla
 ### 1. Clone and install
 
 ```bash
-git clone https://github.com/jonesphillip/weft.git
-cd weft
+git clone https://github.com/Aytza/aytzaos_v2.git
+cd aytzaos_v2
 npm install
 ```
 
@@ -94,7 +94,7 @@ npm run dev
 
 This starts both the Vite dev server (frontend) and Wrangler (worker). Open http://localhost:5174.
 
-By default, Weft runs without authentication. Boards and tasks are stored under the user defined by `USER_ID` in `wrangler.jsonc`.
+By default, Aytza runs without authentication. Boards and tasks are stored under the user defined by `USER_ID` in `wrangler.jsonc`.
 
 ### 4. Configure your board
 
@@ -138,7 +138,7 @@ By default, `AUTH_MODE` is set to `"none"` for both development and production.
 For multi-user deployments or if you want login protection, enable [Cloudflare Access](https://developers.cloudflare.com/cloudflare-one/applications/configure-apps/):
 
 1. In the Cloudflare dashboard, go to **Zero Trust > Access > Applications**
-2. Create a new **Self-hosted application** with your Weft URL
+2. Create a new **Self-hosted application** with your Aytza URL
 3. Add an **Access policy** (e.g., allow only your email address)
 4. After saving, find the **Application Audience (AUD) Tag** in the application settings
 5. Your **team name** is in your Zero Trust dashboard URL: `https://<team>.cloudflareaccess.com`
@@ -196,7 +196,7 @@ Each board has its own tool configuration in **Settings**:
 
 ## Building New Integrations
 
-To add a built-in integration, Weft uses a registry-driven architecture:
+To add a built-in integration, Aytza uses a registry-driven architecture:
 
 1. Create your MCP server in `worker/` (see `worker/google/GmailMCP.ts` for example)
 2. Register it in `worker/mcp/AccountMCPRegistry.ts`
@@ -217,20 +217,20 @@ The registry defines tool schemas, OAuth configuration, and workflow guidance—
 7. Select **Web application**
 8. Add authorized JavaScript origins:
    - `http://localhost:5174` (development)
-   - `https://weft.<your-subdomain>.workers.dev` (production)
+   - `https://aytza.<your-subdomain>.workers.dev` (production)
 9. Add authorized redirect URIs:
    - `http://localhost:5174/google/callback` (development)
-   - `https://weft.<your-subdomain>.workers.dev/google/callback` (production)
+   - `https://aytza.<your-subdomain>.workers.dev/google/callback` (production)
 10. Copy the Client ID and Client Secret to your `.env` file
 
 ### GitHub
 
 1. Go to [GitHub Developer Settings](https://github.com/settings/developers)
 2. Click **New OAuth App**
-3. Set the homepage URL to your Weft deployment
+3. Set the homepage URL to your Aytza deployment
 4. Set the authorization callback URL:
    - `http://localhost:5174/github/callback` (development)
-   - `https://weft.<your-subdomain>.workers.dev/github/callback` (production)
+   - `https://aytza.<your-subdomain>.workers.dev/github/callback` (production)
 5. Copy the Client ID and Client Secret to your `.env` file
 
 ## License

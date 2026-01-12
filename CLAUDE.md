@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Weft is an AI-powered task management application where autonomous AI agents work on tasks. Built on Cloudflare's Developer Platform with a React frontend and TypeScript backend.
+Aytza is an AI-powered task management application where autonomous AI agents work on tasks. Built on Cloudflare's Developer Platform with a React frontend and TypeScript backend.
 
 **Architecture Flow:**
 ```
