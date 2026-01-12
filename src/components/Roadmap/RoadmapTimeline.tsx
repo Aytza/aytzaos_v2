@@ -3,41 +3,15 @@ import { useRoadmap } from '../../context/RoadmapContext';
 import type { RoadmapItem, RoadmapColumn } from '../../types';
 import { TEAM_MEMBERS } from '../../types';
 
-// Get Monday of the week for a given date
-function getWeekStart(date: Date): Date {
-  const d = new Date(date);
-  const day = d.getDay();
-  const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-  d.setDate(diff);
-  d.setHours(0, 0, 0, 0);
-  return d;
-}
-
-// Generate array of weeks starting from current week
-function generateWeeks(count: number): Date[] {
-  const weeks: Date[] = [];
-  const today = new Date();
-  const currentWeekStart = getWeekStart(today);
-
+// Generate array of days for the timeline
+function generateDays(startDate: Date, count: number): Date[] {
+  const days: Date[] = [];
   for (let i = 0; i < count; i++) {
-    const weekStart = new Date(currentWeekStart);
-    weekStart.setDate(currentWeekStart.getDate() + i * 7);
-    weeks.push(weekStart);
+    const day = new Date(startDate);
+    day.setDate(startDate.getDate() + i);
+    days.push(day);
   }
-
-  return weeks;
-}
-
-function formatWeekHeader(date: Date): string {
-  const month = date.toLocaleDateString('en-US', { month: 'short' });
-  const day = date.getDate();
-  return `${month} ${day}`;
-}
-
-function isSameWeek(date1: Date, date2: Date): boolean {
-  const week1 = getWeekStart(date1);
-  const week2 = getWeekStart(date2);
-  return week1.getTime() === week2.getTime();
+  return days;
 }
 
 function getOwnerInitials(email: string | null): string {
@@ -50,144 +24,212 @@ function getOwnerInitials(email: string | null): string {
   return email[0].toUpperCase();
 }
 
+function isWeekend(date: Date): boolean {
+  const day = date.getDay();
+  return day === 0 || day === 6;
+}
+
+function isSameDay(date1: Date, date2: Date): boolean {
+  return (
+    date1.getFullYear() === date2.getFullYear() &&
+    date1.getMonth() === date2.getMonth() &&
+    date1.getDate() === date2.getDate()
+  );
+}
+
 const COLUMN_COLORS: Record<RoadmapColumn, string> = {
-  ideas: '#6b7280',
+  ideas: '#888888',
   prototyping: '#f59e0b',
   building: '#3b82f6',
   shipped: '#10b981',
 };
 
+const TIMELINE_DAYS = 60; // Show 60 days
+
 export function RoadmapTimeline() {
-  const { state, selectItem, moveItem } = useRoadmap();
-  const weeks = useMemo(() => generateWeeks(8), []);
+  const { state, selectItem } = useRoadmap();
 
-  // Get items that have a target week and are in prototyping or building
+  // Generate days starting from 7 days ago
+  const timelineStart = useMemo(() => {
+    const start = new Date();
+    start.setDate(start.getDate() - 7);
+    start.setHours(0, 0, 0, 0);
+    return start;
+  }, []);
+
+  const days = useMemo(() => generateDays(timelineStart, TIMELINE_DAYS), [timelineStart]);
+  const today = useMemo(() => {
+    const t = new Date();
+    t.setHours(0, 0, 0, 0);
+    return t;
+  }, []);
+
+  // Get items that have dates set
   const scheduledItems = useMemo(() => {
-    return state.items.filter(
-      (item) => item.targetWeek && (item.column === 'prototyping' || item.column === 'building')
-    );
+    return state.items.filter((item) => item.startDate || item.endDate);
   }, [state.items]);
 
-  // Get items without target week
+  // Get items without dates
   const unscheduledItems = useMemo(() => {
-    return state.items.filter(
-      (item) => !item.targetWeek && (item.column === 'prototyping' || item.column === 'building')
-    );
+    return state.items.filter((item) => !item.startDate && !item.endDate);
   }, [state.items]);
 
-  const getItemsForWeek = useCallback(
-    (week: Date): RoadmapItem[] => {
-      return scheduledItems.filter((item) => {
-        if (!item.targetWeek) return false;
-        const itemDate = new Date(item.targetWeek);
-        return isSameWeek(itemDate, week);
-      });
+  // Calculate bar position and width for an item
+  const getItemBarStyle = useCallback(
+    (item: RoadmapItem): { left: string; width: string } | null => {
+      const startDate = item.startDate ? new Date(item.startDate) : null;
+      const endDate = item.endDate ? new Date(item.endDate) : null;
+
+      if (!startDate && !endDate) return null;
+
+      const timelineEnd = new Date(timelineStart);
+      timelineEnd.setDate(timelineStart.getDate() + TIMELINE_DAYS);
+
+      // Use startDate or today if only endDate is set
+      const barStart = startDate || today;
+      // Use endDate or startDate + 7 days if only startDate is set
+      const barEnd = endDate || new Date(barStart.getTime() + 7 * 24 * 60 * 60 * 1000);
+
+      // Calculate position
+      const dayWidth = 100 / TIMELINE_DAYS;
+      const startDiff = Math.floor(
+        (barStart.getTime() - timelineStart.getTime()) / (24 * 60 * 60 * 1000)
+      );
+      const duration = Math.ceil(
+        (barEnd.getTime() - barStart.getTime()) / (24 * 60 * 60 * 1000)
+      ) + 1;
+
+      const left = Math.max(0, startDiff) * dayWidth;
+      const width = Math.min(duration, TIMELINE_DAYS - startDiff) * dayWidth;
+
+      if (width <= 0 || left >= 100) return null;
+
+      return {
+        left: `${left}%`,
+        width: `${Math.max(width, dayWidth)}%`,
+      };
     },
-    [scheduledItems]
+    [timelineStart, today]
   );
 
-  const handleDrop = useCallback(
-    (_week: Date, e: React.DragEvent) => {
-      e.preventDefault();
-      const itemId = e.dataTransfer.getData('text/plain');
-      if (!itemId) return;
+  // Group months for header
+  const months = useMemo(() => {
+    const monthGroups: { month: string; days: number; startIndex: number }[] = [];
+    let currentMonth = '';
+    let currentCount = 0;
+    let startIndex = 0;
 
-      const item = state.items.find((i) => i.id === itemId);
-      if (!item) return;
-
-      // Note: Drag-drop on timeline just opens the modal for now
-      // User can set target week via the modal
-      moveItem(item.id, item.column, item.position);
-    },
-    [state.items, moveItem]
-  );
-
-  const handleDragOver = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-  }, []);
-
-  const handleDragStart = useCallback((e: React.DragEvent, itemId: string) => {
-    e.dataTransfer.setData('text/plain', itemId);
-  }, []);
-
-  const today = new Date();
-  const currentWeekStart = getWeekStart(today);
+    days.forEach((day, index) => {
+      const month = day.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+      if (month !== currentMonth) {
+        if (currentMonth) {
+          monthGroups.push({ month: currentMonth, days: currentCount, startIndex });
+        }
+        currentMonth = month;
+        currentCount = 1;
+        startIndex = index;
+      } else {
+        currentCount++;
+      }
+    });
+    if (currentMonth) {
+      monthGroups.push({ month: currentMonth, days: currentCount, startIndex });
+    }
+    return monthGroups;
+  }, [days]);
 
   return (
-    <div className="roadmap-timeline">
-      <div className="timeline-header">
-        <div className="timeline-header-label">Week</div>
-        {weeks.map((week) => (
+    <div className="roadmap-timeline-gantt">
+      {/* Month headers */}
+      <div className="gantt-months">
+        <div className="gantt-row-label" />
+        {months.map((m) => (
           <div
-            key={week.toISOString()}
-            className={`timeline-header-week ${
-              week.getTime() === currentWeekStart.getTime() ? 'current' : ''
-            }`}
+            key={`${m.month}-${m.startIndex}`}
+            className="gantt-month"
+            style={{ width: `${(m.days / TIMELINE_DAYS) * 100}%` }}
           >
-            {formatWeekHeader(week)}
+            {m.month}
           </div>
         ))}
       </div>
 
-      <div className="timeline-body">
-        <div className="timeline-row-label">Scheduled</div>
-        {weeks.map((week) => {
-          const items = getItemsForWeek(week);
+      {/* Day headers */}
+      <div className="gantt-days">
+        <div className="gantt-row-label" />
+        {days.map((day) => (
+          <div
+            key={day.toISOString()}
+            className={`gantt-day ${isSameDay(day, today) ? 'today' : ''} ${isWeekend(day) ? 'weekend' : ''}`}
+          >
+            {day.getDate()}
+          </div>
+        ))}
+      </div>
+
+      {/* Items */}
+      <div className="gantt-rows">
+        {scheduledItems.map((item) => {
+          const barStyle = getItemBarStyle(item);
           return (
-            <div
-              key={week.toISOString()}
-              className={`timeline-cell ${
-                week.getTime() === currentWeekStart.getTime() ? 'current' : ''
-              }`}
-              onDragOver={handleDragOver}
-              onDrop={(e) => handleDrop(week, e)}
-            >
-              {items.map((item) => (
-                <div
-                  key={item.id}
-                  className="timeline-item"
-                  style={{ borderLeftColor: COLUMN_COLORS[item.column] }}
-                  draggable
-                  onDragStart={(e) => handleDragStart(e, item.id)}
-                  onClick={() => selectItem(item.id)}
-                >
-                  <div className="timeline-item-title">{item.title}</div>
-                  <div className="timeline-item-meta">
-                    <span
-                      className="timeline-item-status"
-                      style={{ backgroundColor: COLUMN_COLORS[item.column] }}
-                    >
-                      {item.column}
-                    </span>
-                    {item.ownerEmail && (
-                      <span className="timeline-item-owner">
-                        {getOwnerInitials(item.ownerEmail)}
-                      </span>
-                    )}
+            <div key={item.id} className="gantt-row">
+              <div className="gantt-row-label" onClick={() => selectItem(item.id)}>
+                <span className="gantt-item-title">{item.title}</span>
+                {item.ownerEmail && (
+                  <span className="gantt-item-owner">{getOwnerInitials(item.ownerEmail)}</span>
+                )}
+              </div>
+              <div className="gantt-row-track">
+                {/* Grid lines for days */}
+                {days.map((day) => (
+                  <div
+                    key={day.toISOString()}
+                    className={`gantt-grid-cell ${isSameDay(day, today) ? 'today' : ''} ${isWeekend(day) ? 'weekend' : ''}`}
+                  />
+                ))}
+                {/* The bar */}
+                {barStyle && (
+                  <div
+                    className="gantt-bar"
+                    style={{
+                      ...barStyle,
+                      backgroundColor: COLUMN_COLORS[item.column],
+                    }}
+                    onClick={() => selectItem(item.id)}
+                    title={`${item.title}\n${item.startDate || ''} - ${item.endDate || ''}`}
+                  >
+                    <span className="gantt-bar-label">{item.title}</span>
                   </div>
-                </div>
-              ))}
+                )}
+              </div>
             </div>
           );
         })}
       </div>
 
+      {/* Today marker */}
+      <div
+        className="gantt-today-line"
+        style={{
+          left: `calc(${((today.getTime() - timelineStart.getTime()) / (TIMELINE_DAYS * 24 * 60 * 60 * 1000)) * 100}% + 120px)`,
+        }}
+      />
+
+      {/* Unscheduled items */}
       {unscheduledItems.length > 0 && (
-        <div className="timeline-unscheduled">
-          <h3>Unscheduled (in progress)</h3>
-          <div className="timeline-unscheduled-items">
+        <div className="gantt-unscheduled">
+          <h3>Unscheduled Items</h3>
+          <div className="gantt-unscheduled-items">
             {unscheduledItems.map((item) => (
               <div
                 key={item.id}
-                className="timeline-item"
+                className="gantt-unscheduled-item"
                 style={{ borderLeftColor: COLUMN_COLORS[item.column] }}
-                draggable
-                onDragStart={(e) => handleDragStart(e, item.id)}
                 onClick={() => selectItem(item.id)}
               >
-                <div className="timeline-item-title">{item.title}</div>
+                <span className="gantt-item-title">{item.title}</span>
                 <span
-                  className="timeline-item-status"
+                  className="gantt-item-status"
                   style={{ backgroundColor: COLUMN_COLORS[item.column] }}
                 >
                   {item.column}

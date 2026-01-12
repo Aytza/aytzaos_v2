@@ -12,25 +12,6 @@ const COLUMN_OPTIONS: { id: RoadmapColumn; name: string }[] = [
   { id: 'shipped', name: 'Shipped' },
 ];
 
-// Generate weeks for the dropdown (current week + 8 weeks ahead)
-function generateWeekOptions(): { value: string; label: string }[] {
-  const options: { value: string; label: string }[] = [{ value: '', label: 'No target week' }];
-  const today = new Date();
-
-  for (let i = 0; i < 12; i++) {
-    const weekStart = new Date(today);
-    weekStart.setDate(today.getDate() + i * 7 - today.getDay() + 1);
-    const value = weekStart.toISOString().split('T')[0];
-    const label = weekStart.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-    });
-    options.push({ value, label: `Week of ${label}` });
-  }
-
-  return options;
-}
-
 export function RoadmapItemModal() {
   const { state, updateItem, deleteItem, selectItem, moveItem } = useRoadmap();
   const selectedItem = state.items.find((i) => i.id === state.selectedItemId);
@@ -38,20 +19,20 @@ export function RoadmapItemModal() {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [ownerEmail, setOwnerEmail] = useState('');
-  const [targetWeek, setTargetWeek] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
   const [size, setSize] = useState<ItemSize>('M');
   const [notes, setNotes] = useState('');
   const [column, setColumn] = useState<RoadmapColumn>('ideas');
   const [isDeleting, setIsDeleting] = useState(false);
-
-  const weekOptions = generateWeekOptions();
 
   useEffect(() => {
     if (selectedItem) {
       setTitle(selectedItem.title);
       setDescription(selectedItem.description || '');
       setOwnerEmail(selectedItem.ownerEmail || '');
-      setTargetWeek(selectedItem.targetWeek || '');
+      setStartDate(selectedItem.startDate || '');
+      setEndDate(selectedItem.endDate || '');
       setSize(selectedItem.size);
       setNotes(selectedItem.notes || '');
       setColumn(selectedItem.column);
@@ -71,7 +52,8 @@ export function RoadmapItemModal() {
       title,
       description: description || undefined,
       ownerEmail: ownerEmail || null,
-      targetWeek: targetWeek || null,
+      startDate: startDate || null,
+      endDate: endDate || null,
       size,
       notes: notes || null,
     });
@@ -83,7 +65,7 @@ export function RoadmapItemModal() {
     }
 
     handleClose();
-  }, [selectedItem, title, description, ownerEmail, targetWeek, size, notes, column, state.items, updateItem, moveItem, handleClose]);
+  }, [selectedItem, title, description, ownerEmail, startDate, endDate, size, notes, column, state.items, updateItem, moveItem, handleClose]);
 
   const handleDelete = useCallback(async () => {
     if (!selectedItem) return;
@@ -146,6 +128,27 @@ export function RoadmapItemModal() {
 
         <div className="roadmap-modal-row">
           <div className="roadmap-modal-field">
+            <label>Start Date</label>
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+            />
+          </div>
+
+          <div className="roadmap-modal-field">
+            <label>End Date</label>
+            <input
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              min={startDate || undefined}
+            />
+          </div>
+        </div>
+
+        <div className="roadmap-modal-row">
+          <div className="roadmap-modal-field">
             <label>Owner</label>
             <select
               value={ownerEmail}
@@ -161,28 +164,14 @@ export function RoadmapItemModal() {
           </div>
 
           <div className="roadmap-modal-field">
-            <label>Target Week</label>
-            <select
-              value={targetWeek}
-              onChange={(e) => setTargetWeek(e.target.value)}
-            >
-              {weekOptions.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
+            <label>Notes</label>
+            <input
+              type="text"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="e.g., n8n workflow link, PR #123..."
+            />
           </div>
-        </div>
-
-        <div className="roadmap-modal-field">
-          <label>Notes</label>
-          <input
-            type="text"
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            placeholder="e.g., n8n workflow link, PR #123..."
-          />
         </div>
 
         <div className="roadmap-modal-meta">

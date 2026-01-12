@@ -23,15 +23,26 @@ function getOwnerInitials(email: string | null): string {
   return email[0].toUpperCase();
 }
 
-function formatWeek(dateStr: string | null): string {
-  if (!dateStr) return '';
-  const date = new Date(dateStr);
-  const month = date.toLocaleDateString('en-US', { month: 'short' });
-  const day = date.getDate();
-  return `Week of ${month} ${day}`;
+function formatDateRange(startDate: string | null, endDate: string | null): string {
+  if (!startDate && !endDate) return '';
+
+  const formatDate = (dateStr: string) => {
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  };
+
+  if (startDate && endDate) {
+    return `${formatDate(startDate)} - ${formatDate(endDate)}`;
+  }
+  if (startDate) {
+    return `From ${formatDate(startDate)}`;
+  }
+  return `Until ${formatDate(endDate!)}`;
 }
 
 export function RoadmapCard({ item, onDragStart, onClick }: RoadmapCardProps) {
+  const dateRange = formatDateRange(item.startDate, item.endDate);
+
   return (
     <div
       className="roadmap-card"
@@ -48,8 +59,8 @@ export function RoadmapCard({ item, onDragStart, onClick }: RoadmapCardProps) {
           </span>
         )}
 
-        {item.targetWeek && (
-          <span className="roadmap-card-week">{formatWeek(item.targetWeek)}</span>
+        {dateRange && (
+          <span className="roadmap-card-dates">{dateRange}</span>
         )}
 
         {item.ownerEmail && (

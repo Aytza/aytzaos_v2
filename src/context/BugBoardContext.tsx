@@ -84,6 +84,7 @@ interface BugBoardContextValue {
       description?: string;
       severity?: BugSeverity;
       ownerEmail?: string | null;
+      screenshots?: string[];
     }
   ) => Promise<BugItem | null>;
   moveItem: (id: string, column: BugColumn, position: number) => Promise<void>;
@@ -164,7 +165,8 @@ export function BugBoardProvider({ children }: { children: ReactNode }) {
   }) => {
     const result = await api.createBugItem(data);
     if (result.success && result.data) {
-      dispatch({ type: 'ADD_ITEM', payload: result.data });
+      // Don't dispatch ADD_ITEM here - WebSocket will handle it
+      // to avoid duplicate items
       return result.data;
     }
     return null;
@@ -177,6 +179,7 @@ export function BugBoardProvider({ children }: { children: ReactNode }) {
       description?: string;
       severity?: BugSeverity;
       ownerEmail?: string | null;
+      screenshots?: string[];
     }
   ) => {
     const result = await api.updateBugItem(id, data);

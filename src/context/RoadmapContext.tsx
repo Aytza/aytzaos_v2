@@ -75,7 +75,8 @@ interface RoadmapContextValue {
     description?: string;
     column?: RoadmapColumn;
     ownerEmail?: string;
-    targetWeek?: string;
+    startDate?: string;
+    endDate?: string;
     size?: ItemSize;
     notes?: string;
   }) => Promise<RoadmapItem | null>;
@@ -85,7 +86,8 @@ interface RoadmapContextValue {
       title?: string;
       description?: string;
       ownerEmail?: string | null;
-      targetWeek?: string | null;
+      startDate?: string | null;
+      endDate?: string | null;
       size?: ItemSize;
       notes?: string | null;
     }
@@ -168,13 +170,15 @@ export function RoadmapProvider({ children }: { children: ReactNode }) {
     description?: string;
     column?: RoadmapColumn;
     ownerEmail?: string;
-    targetWeek?: string;
+    startDate?: string;
+    endDate?: string;
     size?: ItemSize;
     notes?: string;
   }) => {
     const result = await api.createRoadmapItem(data);
     if (result.success && result.data) {
-      dispatch({ type: 'ADD_ITEM', payload: result.data });
+      // Don't dispatch ADD_ITEM here - WebSocket will handle it
+      // to avoid duplicate items
       return result.data;
     }
     return null;
@@ -186,7 +190,8 @@ export function RoadmapProvider({ children }: { children: ReactNode }) {
       title?: string;
       description?: string;
       ownerEmail?: string | null;
-      targetWeek?: string | null;
+      startDate?: string | null;
+      endDate?: string | null;
       size?: ItemSize;
       notes?: string | null;
     }

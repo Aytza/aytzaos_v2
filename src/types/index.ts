@@ -328,7 +328,8 @@ export interface RoadmapItem {
   column: RoadmapColumn;
   position: number;
   ownerEmail: string | null;
-  targetWeek: string | null;
+  startDate: string | null;
+  endDate: string | null;
   size: ItemSize;
   notes: string | null;
   createdBy: string;
@@ -351,6 +352,7 @@ export interface BugItem {
   position: number;
   severity: BugSeverity;
   ownerEmail: string | null;
+  screenshots: string[]; // Array of base64 data URLs
   createdBy: string;
   createdAt: string;
   updatedAt: string;

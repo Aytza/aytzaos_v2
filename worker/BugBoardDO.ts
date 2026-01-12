@@ -15,6 +15,7 @@ export interface BugItem {
   position: number;
   severity: BugSeverity;
   ownerEmail: string | null;
+  screenshots: string[]; // Array of base64 data URLs
   createdBy: string;
   createdAt: string;
   updatedAt: string;
@@ -38,6 +39,7 @@ function initBugBoardSchema(sql: SqlStorage): void {
       position INTEGER NOT NULL DEFAULT 0,
       severity TEXT NOT NULL DEFAULT 'medium',
       owner_email TEXT,
+      screenshots TEXT DEFAULT '[]',
       created_by TEXT NOT NULL,
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
@@ -46,6 +48,13 @@ function initBugBoardSchema(sql: SqlStorage): void {
     CREATE INDEX IF NOT EXISTS idx_bug_column ON bug_items(column);
     CREATE INDEX IF NOT EXISTS idx_bug_severity ON bug_items(severity);
   `);
+
+  // Migration: Add screenshots column if it doesn't exist
+  try {
+    sql.exec(`ALTER TABLE bug_items ADD COLUMN screenshots TEXT DEFAULT '[]'`);
+  } catch {
+    // Column already exists, ignore error
+  }
 }
 
 // ============================================
@@ -141,6 +150,7 @@ export class BugBoardDO extends DurableObject<Env> {
     column?: BugColumn;
     severity?: BugSeverity;
     ownerEmail?: string;
+    screenshots?: string[];
     createdBy: string;
   }): Promise<BugItem> {
     const id = crypto.randomUUID();
@@ -154,8 +164,8 @@ export class BugBoardDO extends DurableObject<Env> {
     const position = (posResult[0] as { next_pos: number }).next_pos;
 
     this.sql.exec(`
-      INSERT INTO bug_items (id, title, description, column, position, severity, owner_email, created_by, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO bug_items (id, title, description, column, position, severity, owner_email, screenshots, created_by, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `,
       id,
       data.title,
@@ -164,6 +174,7 @@ export class BugBoardDO extends DurableObject<Env> {
       position,
       data.severity || 'medium',
       data.ownerEmail || null,
+      JSON.stringify(data.screenshots || []),
       data.createdBy,
       now,
       now
@@ -179,6 +190,7 @@ export class BugBoardDO extends DurableObject<Env> {
     description?: string;
     severity?: BugSeverity;
     ownerEmail?: string | null;
+    screenshots?: string[];
   }): Promise<BugItem> {
     const now = new Date().toISOString();
     const updates: string[] = ['updated_at = ?'];
@@ -199,6 +211,10 @@ export class BugBoardDO extends DurableObject<Env> {
     if (data.ownerEmail !== undefined) {
       updates.push('owner_email = ?');
       values.push(data.ownerEmail);
+    }
+    if (data.screenshots !== undefined) {
+      updates.push('screenshots = ?');
+      values.push(JSON.stringify(data.screenshots));
     }
 
     values.push(id);
@@ -290,6 +306,13 @@ export class BugBoardDO extends DurableObject<Env> {
   // ============================================
 
   private rowToItem(row: Record<string, unknown>): BugItem {
+    let screenshots: string[] = [];
+    try {
+      screenshots = JSON.parse((row.screenshots as string) || '[]');
+    } catch {
+      screenshots = [];
+    }
+
     return {
       id: row.id as string,
       title: row.title as string,
@@ -298,6 +321,7 @@ export class BugBoardDO extends DurableObject<Env> {
       position: row.position as number,
       severity: row.severity as BugSeverity,
       ownerEmail: row.owner_email as string | null,
+      screenshots,
       createdBy: row.created_by as string,
       createdAt: row.created_at as string,
       updatedAt: row.updated_at as string,

@@ -140,7 +140,7 @@ export default {
         // POST /api/roadmap/items - Create item
         if (url.pathname === '/api/roadmap/items' && request.method === 'POST') {
           try {
-            const body = await request.json() as { title: string; description?: string; column?: 'ideas' | 'prototyping' | 'building' | 'shipped'; ownerEmail?: string; targetWeek?: string; size?: 'S' | 'M' | 'L'; notes?: string };
+            const body = await request.json() as { title: string; description?: string; column?: 'ideas' | 'prototyping' | 'building' | 'shipped'; ownerEmail?: string; startDate?: string; endDate?: string; size?: 'S' | 'M' | 'L'; notes?: string };
             const item = await roadmapStub.createItem({ ...body, createdBy: user.email });
             return jsonResponse({ success: true, data: item });
           } catch (error) {
@@ -175,7 +175,7 @@ export default {
           // PATCH - Update item
           if (request.method === 'PATCH') {
             try {
-              const body = await request.json() as { title?: string; description?: string; ownerEmail?: string | null; targetWeek?: string | null; size?: 'S' | 'M' | 'L'; notes?: string | null };
+              const body = await request.json() as { title?: string; description?: string; ownerEmail?: string | null; startDate?: string | null; endDate?: string | null; size?: 'S' | 'M' | 'L'; notes?: string | null };
               const item = await roadmapStub.updateItem(itemId, body);
               return jsonResponse({ success: true, data: item });
             } catch (error) {
@@ -252,7 +252,7 @@ export default {
         // POST /api/bugs/items - Create item
         if (url.pathname === '/api/bugs/items' && request.method === 'POST') {
           try {
-            const body = await request.json() as { title: string; description?: string; column?: 'reported' | 'triaged' | 'fixing' | 'fixed'; severity?: 'low' | 'medium' | 'high'; ownerEmail?: string };
+            const body = await request.json() as { title: string; description?: string; column?: 'reported' | 'triaged' | 'fixing' | 'fixed'; severity?: 'low' | 'medium' | 'high'; ownerEmail?: string; screenshots?: string[] };
             const item = await bugBoardStub.createItem({ ...body, createdBy: user.email });
             return jsonResponse({ success: true, data: item });
           } catch (error) {
@@ -287,7 +287,7 @@ export default {
           // PATCH - Update item
           if (request.method === 'PATCH') {
             try {
-              const body = await request.json() as { title?: string; description?: string; severity?: 'low' | 'medium' | 'high'; ownerEmail?: string | null };
+              const body = await request.json() as { title?: string; description?: string; severity?: 'low' | 'medium' | 'high'; ownerEmail?: string | null; screenshots?: string[] };
               const item = await bugBoardStub.updateItem(itemId, body);
               return jsonResponse({ success: true, data: item });
             } catch (error) {

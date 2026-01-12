@@ -14,7 +14,8 @@ export interface RoadmapItem {
   column: RoadmapColumn;
   position: number;
   ownerEmail: string | null;
-  targetWeek: string | null; // ISO date string (Monday of target week)
+  startDate: string | null; // ISO date string
+  endDate: string | null; // ISO date string
   size: ItemSize;
   notes: string | null;
   createdBy: string;
@@ -39,7 +40,8 @@ function initRoadmapSchema(sql: SqlStorage): void {
       column TEXT NOT NULL DEFAULT 'ideas',
       position INTEGER NOT NULL DEFAULT 0,
       owner_email TEXT,
-      target_week TEXT,
+      start_date TEXT,
+      end_date TEXT,
       size TEXT NOT NULL DEFAULT 'M',
       notes TEXT,
       created_by TEXT NOT NULL,
@@ -48,7 +50,8 @@ function initRoadmapSchema(sql: SqlStorage): void {
     );
 
     CREATE INDEX IF NOT EXISTS idx_roadmap_column ON roadmap_items(column);
-    CREATE INDEX IF NOT EXISTS idx_roadmap_target_week ON roadmap_items(target_week);
+    CREATE INDEX IF NOT EXISTS idx_roadmap_start_date ON roadmap_items(start_date);
+    CREATE INDEX IF NOT EXISTS idx_roadmap_end_date ON roadmap_items(end_date);
   `);
 }
 
@@ -144,7 +147,8 @@ export class RoadmapDO extends DurableObject<Env> {
     description?: string;
     column?: RoadmapColumn;
     ownerEmail?: string;
-    targetWeek?: string;
+    startDate?: string;
+    endDate?: string;
     size?: ItemSize;
     notes?: string;
     createdBy: string;
@@ -160,8 +164,8 @@ export class RoadmapDO extends DurableObject<Env> {
     const position = (posResult[0] as { next_pos: number }).next_pos;
 
     this.sql.exec(`
-      INSERT INTO roadmap_items (id, title, description, column, position, owner_email, target_week, size, notes, created_by, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO roadmap_items (id, title, description, column, position, owner_email, start_date, end_date, size, notes, created_by, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `,
       id,
       data.title,
@@ -169,7 +173,8 @@ export class RoadmapDO extends DurableObject<Env> {
       column,
       position,
       data.ownerEmail || null,
-      data.targetWeek || null,
+      data.startDate || null,
+      data.endDate || null,
       data.size || 'M',
       data.notes || null,
       data.createdBy,
@@ -186,7 +191,8 @@ export class RoadmapDO extends DurableObject<Env> {
     title?: string;
     description?: string;
     ownerEmail?: string | null;
-    targetWeek?: string | null;
+    startDate?: string | null;
+    endDate?: string | null;
     size?: ItemSize;
     notes?: string | null;
   }): Promise<RoadmapItem> {
@@ -206,9 +212,13 @@ export class RoadmapDO extends DurableObject<Env> {
       updates.push('owner_email = ?');
       values.push(data.ownerEmail);
     }
-    if (data.targetWeek !== undefined) {
-      updates.push('target_week = ?');
-      values.push(data.targetWeek);
+    if (data.startDate !== undefined) {
+      updates.push('start_date = ?');
+      values.push(data.startDate);
+    }
+    if (data.endDate !== undefined) {
+      updates.push('end_date = ?');
+      values.push(data.endDate);
     }
     if (data.size !== undefined) {
       updates.push('size = ?');
@@ -315,7 +325,8 @@ export class RoadmapDO extends DurableObject<Env> {
       column: row.column as RoadmapColumn,
       position: row.position as number,
       ownerEmail: row.owner_email as string | null,
-      targetWeek: row.target_week as string | null,
+      startDate: row.start_date as string | null,
+      endDate: row.end_date as string | null,
       size: row.size as ItemSize,
       notes: row.notes as string | null,
       createdBy: row.created_by as string,

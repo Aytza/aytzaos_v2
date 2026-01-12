@@ -56,6 +56,24 @@ export function BugCard({ item, onDragStart, onClick }: BugCardProps) {
             : item.description}
         </div>
       )}
+
+      {item.screenshots && item.screenshots.length > 0 && (
+        <div className="bugboard-card-screenshots">
+          {item.screenshots.slice(0, 3).map((src, index) => (
+            <img
+              key={index}
+              src={src}
+              alt={`Screenshot ${index + 1}`}
+              className="bugboard-card-screenshot-thumb"
+            />
+          ))}
+          {item.screenshots.length > 3 && (
+            <span className="bugboard-card-screenshot-count">
+              +{item.screenshots.length - 3}
+            </span>
+          )}
+        </div>
+      )}
     </div>
   );
 }

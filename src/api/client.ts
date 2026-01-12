@@ -571,7 +571,8 @@ export async function createRoadmapItem(data: {
   description?: string;
   column?: RoadmapColumn;
   ownerEmail?: string;
-  targetWeek?: string;
+  startDate?: string;
+  endDate?: string;
   size?: ItemSize;
   notes?: string;
 }): Promise<ApiResponse<RoadmapItem>> {
@@ -587,7 +588,8 @@ export async function updateRoadmapItem(
     title?: string;
     description?: string;
     ownerEmail?: string | null;
-    targetWeek?: string | null;
+    startDate?: string | null;
+    endDate?: string | null;
     size?: ItemSize;
     notes?: string | null;
   }
@@ -633,6 +635,7 @@ export async function createBugItem(data: {
   column?: BugColumn;
   severity?: BugSeverity;
   ownerEmail?: string;
+  screenshots?: string[];
 }): Promise<ApiResponse<BugItem>> {
   return request<BugItem>('/bugs/items', {
     method: 'POST',
@@ -647,6 +650,7 @@ export async function updateBugItem(
     description?: string;
     severity?: BugSeverity;
     ownerEmail?: string | null;
+    screenshots?: string[];
   }
 ): Promise<ApiResponse<BugItem>> {
   return request<BugItem>(`/bugs/items/${id}`, {
