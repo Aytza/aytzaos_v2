@@ -3,7 +3,7 @@ import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { useProject } from '../../context/ProjectContext';
 import { useAuth } from '../../context/AuthContext';
 import { Modal, Input, Button } from '../common';
-import { BoardSettings } from '../Settings';
+import { BoardSettings, UserSettings } from '../Settings';
 import { WeftLogo } from './WeftLogo';
 import * as api from '../../api/client';
 import './Header.css';
@@ -17,6 +17,7 @@ export function Header() {
   const [showProjectModal, setShowProjectModal] = useState(false);
   const [showSelector, setShowSelector] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showUserSettings, setShowUserSettings] = useState(false);
   const [showExecutions, setShowExecutions] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [newProjectName, setNewProjectName] = useState('');
@@ -261,6 +262,15 @@ export function Header() {
                 <div className="user-menu-email">{user.email}</div>
                 <div className="user-menu-divider" />
                 <button
+                  className="user-menu-item"
+                  onClick={() => {
+                    setShowUserMenu(false);
+                    setShowUserSettings(true);
+                  }}
+                >
+                  Settings
+                </button>
+                <button
                   className="user-menu-item user-menu-signout"
                   onClick={() => {
                     setShowUserMenu(false);
@@ -314,6 +324,11 @@ export function Header() {
       <BoardSettings
         isOpen={showSettings}
         onClose={() => setShowSettings(false)}
+      />
+
+      <UserSettings
+        isOpen={showUserSettings}
+        onClose={() => setShowUserSettings(false)}
       />
     </header>
   );
