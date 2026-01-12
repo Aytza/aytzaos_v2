@@ -21,7 +21,7 @@ export async function routeProjectRequest(
   projectId: string,
   subPath: string,
   env: Env,
-  _user: AuthUser
+  user: AuthUser
 ): Promise<Response> {
   const method = request.method;
 
@@ -201,7 +201,7 @@ export async function routeProjectRequest(
   const generatePlanMatch = subPath.match(/^\/tasks\/([^/]+)\/generate-plan$/);
   if (generatePlanMatch && method === 'POST') {
     const body = await request.json() as { agentId?: string };
-    return handleGeneratePlan(env, boardStub, projectId, generatePlanMatch[1], body.agentId);
+    return handleGeneratePlan(env, boardStub, projectId, generatePlanMatch[1], user.id, body.agentId);
   }
 
   // GET /api/projects/:id/tasks/:taskId/plan - Get task workflow plan

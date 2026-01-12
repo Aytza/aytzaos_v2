@@ -296,6 +296,71 @@ export async function deleteAgent(id: string, projectId?: string): Promise<ApiRe
 }
 
 // ============================================
+// GLOBAL MCP SERVERS (User-level MCPs)
+// ============================================
+
+export async function getGlobalMCPServers(): Promise<ApiResponse<MCPServer[]>> {
+  return request<MCPServer[]>('/mcp-servers');
+}
+
+export async function getGlobalMCPServer(serverId: string): Promise<ApiResponse<MCPServer>> {
+  return request<MCPServer>(`/mcp-servers/${serverId}`);
+}
+
+export async function createGlobalMCPServer(data: {
+  name: string;
+  type: 'remote' | 'hosted';
+  endpoint?: string;
+  authType?: 'none' | 'oauth' | 'api_key' | 'bearer';
+  credentialId?: string;
+  transportType?: 'streamable-http' | 'sse';
+}): Promise<ApiResponse<MCPServer>> {
+  return request<MCPServer>('/mcp-servers', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateGlobalMCPServer(
+  serverId: string,
+  data: {
+    name?: string;
+    endpoint?: string;
+    authType?: 'none' | 'oauth' | 'api_key' | 'bearer';
+    credentialId?: string;
+    transportType?: 'streamable-http' | 'sse';
+    enabled?: boolean;
+    status?: 'connected' | 'disconnected' | 'error';
+  }
+): Promise<ApiResponse<MCPServer>> {
+  return request<MCPServer>(`/mcp-servers/${serverId}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteGlobalMCPServer(serverId: string): Promise<ApiResponse<void>> {
+  return request<void>(`/mcp-servers/${serverId}`, {
+    method: 'DELETE',
+  });
+}
+
+export async function getGlobalMCPServerTools(serverId: string): Promise<ApiResponse<MCPTool[]>> {
+  return request<MCPTool[]>(`/mcp-servers/${serverId}/tools`);
+}
+
+export async function connectGlobalMCPServer(serverId: string): Promise<ApiResponse<{
+  status: string;
+  toolCount: number;
+  tools: Array<{ name: string; description?: string }>;
+}>> {
+  return request<{ status: string; toolCount: number; tools: Array<{ name: string; description?: string }> }>(
+    `/mcp-servers/${serverId}/connect`,
+    { method: 'POST' }
+  );
+}
+
+// ============================================
 // CREDENTIALS
 // ============================================
 

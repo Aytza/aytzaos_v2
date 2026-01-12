@@ -48,6 +48,7 @@ const BUILTIN_TOOLS = [
 
 export function AgentSection({ projectId, onRun, disabled, isRunning }: AgentSectionProps) {
   const [mcpServers, setMcpServers] = useState<MCPServer[]>([]);
+  const [globalMcpServers, setGlobalMcpServers] = useState<MCPServer[]>([]);
   const [agents, setAgents] = useState<Agent[]>([]);
   const [selectedAgentId, setSelectedAgentId] = useState<string | undefined>(undefined);
   const [loading, setLoading] = useState(true);
@@ -65,7 +66,16 @@ export function AgentSection({ projectId, onRun, disabled, isRunning }: AgentSec
     async function loadData() {
       const promises: Promise<void>[] = [];
 
-      // Load MCP servers if project-based
+      // Load global MCP servers (always)
+      promises.push(
+        api.getGlobalMCPServers().then(result => {
+          if (result.success && result.data) {
+            setGlobalMcpServers(result.data);
+          }
+        })
+      );
+
+      // Load project-specific MCP servers
       if (projectId) {
         promises.push(
           api.getMCPServers(projectId).then(result => {
@@ -108,12 +118,15 @@ export function AgentSection({ projectId, onRun, disabled, isRunning }: AgentSec
     return agents.find(a => a.id === selectedAgentId);
   }, [agents, selectedAgentId]);
 
-  // Combine built-in tools with enabled MCPs only
+  // Combine built-in tools with enabled MCPs (both global and project-specific)
   const allTools = [
     ...BUILTIN_TOOLS,
+    ...globalMcpServers
+      .filter(s => s.enabled)
+      .map(s => ({ id: s.id, name: s.name, isGlobal: true })),
     ...mcpServers
       .filter(s => s.enabled)
-      .map(s => ({ id: s.id, name: s.name })),
+      .map(s => ({ id: s.id, name: s.name, isGlobal: false })),
   ];
 
   const MAX_VISIBLE = 4;

@@ -472,6 +472,188 @@ export default {
       }
 
       // ============================================
+      // GLOBAL MCP ROUTES (/api/mcp-servers)
+      // User-level MCPs available across all projects
+      // ============================================
+
+      // GET /api/mcp-servers - List user's global MCP servers
+      if (url.pathname === '/api/mcp-servers' && request.method === 'GET') {
+        const userTasksId = `user-tasks-${user.id}`;
+        const boardDoId = env.BOARD_DO.idFromName(userTasksId);
+        const boardStub = env.BOARD_DO.get(boardDoId) as BoardDOStub;
+
+        // Initialize if needed
+        try {
+          await boardStub.initProject({
+            id: userTasksId,
+            name: 'My Tasks',
+            ownerId: user.id,
+            isUserTasksContainer: true
+          });
+        } catch {
+          // Already initialized, ignore
+        }
+
+        // Use a special "global" project ID for user-level MCPs
+        const servers = await boardStub.getMCPServers('__global__');
+        return jsonResponse({ success: true, data: servers });
+      }
+
+      // POST /api/mcp-servers - Create global MCP server
+      if (url.pathname === '/api/mcp-servers' && request.method === 'POST') {
+        const userTasksId = `user-tasks-${user.id}`;
+        const boardDoId = env.BOARD_DO.idFromName(userTasksId);
+        const boardStub = env.BOARD_DO.get(boardDoId) as BoardDOStub;
+
+        // Initialize if needed
+        try {
+          await boardStub.initProject({
+            id: userTasksId,
+            name: 'My Tasks',
+            ownerId: user.id,
+            isUserTasksContainer: true
+          });
+        } catch {
+          // Already initialized, ignore
+        }
+
+        const body = await request.json() as {
+          name: string;
+          type: 'remote' | 'hosted';
+          endpoint?: string;
+          authType?: string;
+          credentialId?: string;
+          status?: string;
+          transportType?: 'streamable-http' | 'sse';
+          urlPatterns?: Array<{ pattern: string; type: string; fetchTool: string }>;
+        };
+
+        try {
+          const server = await boardStub.createMCPServer('__global__', body);
+          return jsonResponse({ success: true, data: server });
+        } catch (error) {
+          return jsonResponse({
+            success: false,
+            error: { code: 'CREATE_FAILED', message: error instanceof Error ? error.message : 'Failed to create MCP server' },
+          }, 500);
+        }
+      }
+
+      // Global MCP server-specific routes
+      const globalMcpMatch = url.pathname.match(/^\/api\/mcp-servers\/([^/]+)$/);
+      if (globalMcpMatch) {
+        const serverId = globalMcpMatch[1];
+        const userTasksId = `user-tasks-${user.id}`;
+        const boardDoId = env.BOARD_DO.idFromName(userTasksId);
+        const boardStub = env.BOARD_DO.get(boardDoId) as BoardDOStub;
+
+        if (request.method === 'GET') {
+          try {
+            const server = await boardStub.getMCPServer(serverId);
+            return jsonResponse({ success: true, data: server });
+          } catch {
+            return jsonResponse({
+              success: false,
+              error: { code: 'NOT_FOUND', message: 'MCP server not found' },
+            }, 404);
+          }
+        }
+
+        if (request.method === 'PUT' || request.method === 'PATCH') {
+          const body = await request.json() as {
+            name?: string;
+            endpoint?: string;
+            authType?: string;
+            credentialId?: string;
+            enabled?: boolean;
+            status?: string;
+            transportType?: 'streamable-http' | 'sse';
+          };
+          try {
+            const server = await boardStub.updateMCPServer(serverId, body);
+            return jsonResponse({ success: true, data: server });
+          } catch {
+            return jsonResponse({
+              success: false,
+              error: { code: 'UPDATE_FAILED', message: 'Failed to update MCP server' },
+            }, 500);
+          }
+        }
+
+        if (request.method === 'DELETE') {
+          try {
+            await boardStub.deleteMCPServer(serverId);
+            return jsonResponse({ success: true });
+          } catch {
+            return jsonResponse({
+              success: false,
+              error: { code: 'DELETE_FAILED', message: 'Failed to delete MCP server' },
+            }, 500);
+          }
+        }
+      }
+
+      // Global MCP tools routes
+      const globalMcpToolsMatch = url.pathname.match(/^\/api\/mcp-servers\/([^/]+)\/tools$/);
+      if (globalMcpToolsMatch) {
+        const serverId = globalMcpToolsMatch[1];
+        const userTasksId = `user-tasks-${user.id}`;
+        const boardDoId = env.BOARD_DO.idFromName(userTasksId);
+        const boardStub = env.BOARD_DO.get(boardDoId) as BoardDOStub;
+
+        if (request.method === 'GET') {
+          try {
+            const tools = await boardStub.getMCPServerTools(serverId);
+            return jsonResponse({ success: true, data: tools });
+          } catch {
+            return jsonResponse({
+              success: false,
+              error: { code: 'NOT_FOUND', message: 'Failed to get MCP tools' },
+            }, 500);
+          }
+        }
+
+        if (request.method === 'PUT' || request.method === 'POST') {
+          const body = await request.json() as {
+            tools: Array<{
+              name: string;
+              description?: string;
+              inputSchema: object;
+              approvalRequiredFields?: string[];
+            }>;
+          };
+          try {
+            const tools = await boardStub.cacheMCPServerTools(serverId, body);
+            return jsonResponse({ success: true, data: tools });
+          } catch {
+            return jsonResponse({
+              success: false,
+              error: { code: 'CACHE_FAILED', message: 'Failed to cache MCP tools' },
+            }, 500);
+          }
+        }
+      }
+
+      // Global MCP connect route
+      const globalMcpConnectMatch = url.pathname.match(/^\/api\/mcp-servers\/([^/]+)\/connect$/);
+      if (globalMcpConnectMatch && request.method === 'POST') {
+        const serverId = globalMcpConnectMatch[1];
+        const userTasksId = `user-tasks-${user.id}`;
+        const boardDoId = env.BOARD_DO.idFromName(userTasksId);
+        const boardStub = env.BOARD_DO.get(boardDoId) as BoardDOStub;
+
+        try {
+          const result = await boardStub.connectMCPServer(serverId);
+          return jsonResponse({ success: true, data: result });
+        } catch (error) {
+          return jsonResponse({
+            success: false,
+            error: { code: 'CONNECT_FAILED', message: error instanceof Error ? error.message : 'Failed to connect MCP server' },
+          }, 500);
+        }
+      }
+
+      // ============================================
       // PROJECT-SPECIFIC ROUTES
       // ============================================
 

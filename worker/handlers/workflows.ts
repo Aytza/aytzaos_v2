@@ -18,6 +18,7 @@ export async function handleGeneratePlan(
   boardStub: BoardDOStub,
   boardId: string,
   taskId: string,
+  userId: string,
   agentId?: string
 ): Promise<Response> {
   if (!env.AGENT_WORKFLOW) {
@@ -92,6 +93,7 @@ export async function handleGeneratePlan(
       planId,
       taskId,
       projectId: boardId,
+      userId,
       taskDescription,
       anthropicApiKey,
       customSystemPrompt,
