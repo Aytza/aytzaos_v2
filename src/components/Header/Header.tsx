@@ -26,6 +26,7 @@ export function Header() {
   const userMenuRef = useRef<HTMLDivElement>(null);
 
   const isHome = location.pathname === '/';
+  const isTasksPage = location.pathname === '/tasks';
 
   // Auto-open settings modal when returning from GitHub OAuth
   useEffect(() => {
@@ -134,8 +135,17 @@ export function Header() {
       </div>
 
       <div className="header-right">
+        {/* My Tasks link */}
+        <button
+          className={`header-nav-btn ${isTasksPage ? 'active' : ''}`}
+          onClick={() => navigate('/tasks')}
+          title="My Tasks"
+        >
+          Tasks
+        </button>
+
         {/* Active Agents dropdown */}
-        {!isHome && activeProject && (
+        {!isHome && !isTasksPage && activeProject && (
           <div className="executions-wrapper" ref={executionsRef}>
             <button
               className={`executions-trigger ${activeWorkflows.length === 0 ? 'executions-trigger-empty' : ''}`}
@@ -222,7 +232,7 @@ export function Header() {
         )}
 
         {/* Project Settings - separate from user menu since it's project-scoped */}
-        {!isHome && activeProject && (
+        {!isHome && !isTasksPage && activeProject && (
           <button
             className="header-settings-btn"
             onClick={() => setShowSettings(true)}

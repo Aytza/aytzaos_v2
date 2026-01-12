@@ -198,6 +198,49 @@ export async function moveTask(
 }
 
 // ============================================
+// STANDALONE TASKS (user's personal tasks)
+// ============================================
+
+export async function getStandaloneTasks(): Promise<ApiResponse<Task[]>> {
+  return request<Task[]>('/tasks');
+}
+
+export async function createStandaloneTask(data: {
+  title: string;
+  description?: string;
+  priority?: TaskPriority;
+}): Promise<ApiResponse<Task>> {
+  return request<Task>('/tasks', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function getStandaloneTask(id: string): Promise<ApiResponse<Task>> {
+  return request<Task>(`/tasks/${id}`);
+}
+
+export async function updateStandaloneTask(
+  id: string,
+  data: {
+    title?: string;
+    description?: string;
+    priority?: TaskPriority;
+  }
+): Promise<ApiResponse<Task>> {
+  return request<Task>(`/tasks/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteStandaloneTask(id: string): Promise<ApiResponse<void>> {
+  return request<void>(`/tasks/${id}`, {
+    method: 'DELETE',
+  });
+}
+
+// ============================================
 // CREDENTIALS
 // ============================================
 

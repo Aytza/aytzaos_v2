@@ -179,32 +179,74 @@ export default {
         }));
       }
 
-      // POST /api/tasks - Create task (projectId in body)
-      if (url.pathname === '/api/tasks' && request.method === 'POST') {
-        const body = await request.json() as { projectId?: string; columnId?: string; title: string; description?: string; priority?: string; context?: object };
-        if (!body.projectId) {
-          return jsonResponse({
-            success: false,
-            error: { code: 'BAD_REQUEST', message: 'projectId is required' },
-          }, 400);
-        }
+      // ============================================
+      // STANDALONE TASKS ROUTES (/api/tasks)
+      // ============================================
 
-        // Verify user has access to this project
-        const accessResult = await userStub.hasAccess(body.projectId);
-
-        if (!accessResult.hasAccess) {
-          return jsonResponse({
-            success: false,
-            error: { code: 'FORBIDDEN', message: 'Access denied to this project' },
-          }, 403);
-        }
-
-        // Route to the correct BoardDO
-        const boardDoId = env.BOARD_DO.idFromName(body.projectId);
+      // GET /api/tasks - List user's standalone tasks
+      if (url.pathname === '/api/tasks' && request.method === 'GET') {
+        // Use a per-user BoardDO for standalone tasks
+        const userTasksId = `user-tasks-${user.id}`;
+        const boardDoId = env.BOARD_DO.idFromName(userTasksId);
         const boardStub = env.BOARD_DO.get(boardDoId) as BoardDOStub;
 
+        // Initialize if needed (silent init for standalone tasks container)
         try {
-          const task = await boardStub.createTask(body);
+          await boardStub.initProject({
+            id: userTasksId,
+            name: 'My Tasks',
+            ownerId: user.id,
+            isUserTasksContainer: true
+          });
+        } catch {
+          // Already initialized, ignore
+        }
+
+        const tasks = await boardStub.getTasks();
+        return jsonResponse({ success: true, data: tasks });
+      }
+
+      // POST /api/tasks - Create task (projectId optional for standalone)
+      if (url.pathname === '/api/tasks' && request.method === 'POST') {
+        const body = await request.json() as { projectId?: string; columnId?: string; title: string; description?: string; priority?: string; context?: object };
+
+        let boardStub: BoardDOStub;
+
+        if (body.projectId) {
+          // Task belongs to a project - verify access
+          const accessResult = await userStub.hasAccess(body.projectId);
+          if (!accessResult.hasAccess) {
+            return jsonResponse({
+              success: false,
+              error: { code: 'FORBIDDEN', message: 'Access denied to this project' },
+            }, 403);
+          }
+          const boardDoId = env.BOARD_DO.idFromName(body.projectId);
+          boardStub = env.BOARD_DO.get(boardDoId) as BoardDOStub;
+        } else {
+          // Standalone task - use user's personal tasks container
+          const userTasksId = `user-tasks-${user.id}`;
+          const boardDoId = env.BOARD_DO.idFromName(userTasksId);
+          boardStub = env.BOARD_DO.get(boardDoId) as BoardDOStub;
+
+          // Initialize if needed
+          try {
+            await boardStub.initProject({
+              id: userTasksId,
+              name: 'My Tasks',
+              ownerId: user.id,
+              isUserTasksContainer: true
+            });
+          } catch {
+            // Already initialized, ignore
+          }
+        }
+
+        try {
+          const task = await boardStub.createTask({
+            ...body,
+            userId: user.id,
+          });
           return jsonResponse({ success: true, data: task });
         } catch (error) {
           return jsonResponse({
@@ -213,6 +255,56 @@ export default {
           }, 500);
         }
       }
+
+      // Task-specific routes for standalone tasks
+      const taskMatch = url.pathname.match(/^\/api\/tasks\/([^/]+)$/);
+      if (taskMatch) {
+        const taskId = taskMatch[1];
+        const userTasksId = `user-tasks-${user.id}`;
+        const boardDoId = env.BOARD_DO.idFromName(userTasksId);
+        const boardStub = env.BOARD_DO.get(boardDoId) as BoardDOStub;
+
+        if (request.method === 'GET') {
+          try {
+            const task = await boardStub.getTask(taskId);
+            return jsonResponse({ success: true, data: task });
+          } catch {
+            return jsonResponse({
+              success: false,
+              error: { code: 'NOT_FOUND', message: 'Task not found' },
+            }, 404);
+          }
+        }
+
+        if (request.method === 'PUT' || request.method === 'PATCH') {
+          const body = await request.json() as { title?: string; description?: string; priority?: string };
+          try {
+            const task = await boardStub.updateTask(taskId, body);
+            return jsonResponse({ success: true, data: task });
+          } catch {
+            return jsonResponse({
+              success: false,
+              error: { code: 'UPDATE_FAILED', message: 'Failed to update task' },
+            }, 500);
+          }
+        }
+
+        if (request.method === 'DELETE') {
+          try {
+            await boardStub.deleteTask(taskId);
+            return jsonResponse({ success: true });
+          } catch {
+            return jsonResponse({
+              success: false,
+              error: { code: 'DELETE_FAILED', message: 'Failed to delete task' },
+            }, 500);
+          }
+        }
+      }
+
+      // ============================================
+      // PROJECT-SPECIFIC ROUTES
+      // ============================================
 
       return jsonResponse({ error: 'Not found' }, 404);
     }

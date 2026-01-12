@@ -40,8 +40,9 @@ export class BoardService {
 
   /**
    * Initialize a new project in this Durable Object
+   * @param isUserTasksContainer - If true, skip creating default columns (for standalone tasks)
    */
-  initProject(data: { id: string; name: string; ownerId: string }): Response {
+  initProject(data: { id: string; name: string; ownerId: string; isUserTasksContainer?: boolean }): Response {
     const now = new Date().toISOString();
 
     const existing = this.sql.exec('SELECT id FROM projects WHERE id = ?', data.id).toArray()[0];
@@ -54,21 +55,23 @@ export class BoardService {
       data.id, data.name, data.ownerId, now, now
     );
 
-    // Create default columns
-    const defaultColumns = ['Backlog', 'Doing', 'Done'];
-    defaultColumns.forEach((name, position) => {
-      const columnId = this.generateId();
-      this.sql.exec(
-        'INSERT INTO columns (id, project_id, name, position) VALUES (?, ?, ?, ?)',
-        columnId, data.id, name, position
-      );
-    });
+    // Create default columns (skip for user tasks container)
+    if (!data.isUserTasksContainer) {
+      const defaultColumns = ['Backlog', 'Doing', 'Done'];
+      defaultColumns.forEach((name, position) => {
+        const columnId = this.generateId();
+        this.sql.exec(
+          'INSERT INTO columns (id, project_id, name, position) VALUES (?, ?, ?, ?)',
+          columnId, data.id, name, position
+        );
+      });
+    }
 
     return this.getProject(data.id);
   }
 
   // Alias for backward compatibility
-  initBoard(data: { id: string; name: string; ownerId: string }): Response {
+  initBoard(data: { id: string; name: string; ownerId: string; isUserTasksContainer?: boolean }): Response {
     return this.initProject(data);
   }
 
@@ -305,6 +308,16 @@ export class BoardService {
       return jsonResponse({ error: 'Task not found' }, 404);
     }
     return jsonResponse({ success: true, data: transformTask(task as Record<string, unknown>) });
+  }
+
+  /**
+   * Get all tasks (for standalone tasks container)
+   */
+  getTasks(): Response {
+    const tasks = this.sql.exec(
+      'SELECT * FROM tasks ORDER BY position'
+    ).toArray();
+    return jsonResponse({ success: true, data: tasks.map(t => transformTask(t as Record<string, unknown>)) });
   }
 
   /**

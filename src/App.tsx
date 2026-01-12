@@ -6,6 +6,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { Header } from './components/Header/Header';
 import { Home } from './components/Home/Home';
 import { Board } from './components/Board/Board';
+import { Tasks } from './components/Tasks';
 import { GitHubCallback } from './components/GitHubCallback';
 import { GoogleCallback } from './components/GoogleCallback';
 import { MCPOAuthCallback } from './components/MCP/MCPOAuthCallback';
@@ -115,6 +116,7 @@ function AppContent() {
         <main className="app-main">
           <Routes>
             <Route path="/" element={<Home />} />
+            <Route path="/tasks" element={<Tasks />} />
             <Route path="/project/:projectId" element={<Board />} />
             {/* Backward compatibility for old board URLs */}
             <Route path="/board/:projectId" element={<Board />} />

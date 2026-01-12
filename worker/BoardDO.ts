@@ -220,13 +220,13 @@ export class BoardDO extends DurableObject<Env> {
   // PROJECT RPC METHODS
   // ============================================
 
-  async initProject(data: { id: string; name: string; ownerId: string }): Promise<Project> {
+  async initProject(data: { id: string; name: string; ownerId: string; isUserTasksContainer?: boolean }): Promise<Project> {
     const response = this.boardService.initProject(data);
     return this.extractData(response);
   }
 
   // Alias for backward compatibility
-  async initBoard(data: { id: string; name: string; ownerId: string }): Promise<Project> {
+  async initBoard(data: { id: string; name: string; ownerId: string; isUserTasksContainer?: boolean }): Promise<Project> {
     return this.initProject(data);
   }
 
@@ -308,6 +308,11 @@ export class BoardDO extends DurableObject<Env> {
 
   async getTask(taskId: string): Promise<Task> {
     const response = this.boardService.getTask(taskId);
+    return this.extractData(response);
+  }
+
+  async getTasks(): Promise<Task[]> {
+    const response = this.boardService.getTasks();
     return this.extractData(response);
   }
 
