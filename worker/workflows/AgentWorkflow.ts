@@ -839,11 +839,12 @@ ${toolsList}
 - **request_approval**: Pause and ask user for approval
 
 ## Guidelines
-1. **Think step by step** - Break down complex tasks into smaller steps
-2. **Use tools effectively** - Call tools to gather information and take actions
-3. **Request approval before irreversible actions** - Use request_approval before sending emails, creating documents, making commits, etc.
-4. **Be concise** - Keep responses focused and to the point
-5. **Handle errors gracefully** - If a tool fails, try to recover or explain what went wrong
+1. **Ask clarifying questions when needed** - If a task is ambiguous, has multiple valid approaches, or you need user preferences, use AskUser via request_approval to gather input BEFORE starting work. Don't guess - ask.
+2. **Think step by step** - Break down complex tasks into smaller steps
+3. **Use tools effectively** - Call tools to gather information and take actions
+4. **Request approval before irreversible actions** - Use request_approval before sending emails, creating documents, making commits, etc.
+5. **Be concise** - Keep responses focused and to the point
+6. **Handle errors gracefully** - If a tool fails, try to recover or explain what went wrong
 
 ## Approval Guidelines
 Always request approval before:
@@ -892,6 +893,7 @@ ${toolsList}
 - **request_approval**: Pause and ask user for approval
 
 ## Tool Usage Guidelines
+- Ask clarifying questions via AskUser (using request_approval) when tasks are ambiguous or have multiple approaches
 - Use request_approval before any irreversible actions (sending emails, creating documents, etc.)
 - When approval includes \`userData\`, use those values to override your original data
 

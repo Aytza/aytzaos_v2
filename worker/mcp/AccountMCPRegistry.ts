@@ -341,15 +341,10 @@ Use code context search for:
 - Getting implementation examples from real codebases`;
 
 const ASK_USER_GUIDANCE = `## Asking Users Questions
-Use AskUser when you need user input, preferences, or decisions. This pauses the workflow and shows the user a nice UI to answer questions.
+Use AskUser to gather user input, preferences, or decisions. This shows a nice UI for the user to answer structured questions.
 
-**When to use:**
-- Gathering user preferences or requirements
-- Clarifying ambiguous instructions
-- Getting decisions on implementation choices
-- Offering choices about what direction to take
-
-**Asking questions:**
+**CRITICAL: AskUser ONLY works via request_approval**
+Do NOT call AskUser__askQuestions directly - it will not work. You MUST use request_approval:
 \`\`\`
 request_approval({
   tool: "AskUser__askQuestions",
@@ -374,11 +369,11 @@ request_approval({
 
 After the user responds, you'll receive their answers in the approval result. Use the selected options to proceed with the task.
 
-**Important:**
+**Question format:**
 - Keep questions clear and concise
-- Provide 2-10 meaningful options per question
+- Provide 2-4 meaningful options per question
 - Use multiSelect: true when multiple choices make sense
-- Use allowOther: true (default) to let users provide custom responses
+- allowOther: true (default) lets users provide custom responses
 - Maximum 4 questions per request`;
 
 // ============================================================================
