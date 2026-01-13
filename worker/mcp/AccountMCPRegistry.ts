@@ -15,6 +15,7 @@ import { DocsMCPServer } from '../google/DocsMCP';
 import { SheetsMCPServer } from '../google/SheetsMCP';
 import { SandboxMCPServer } from '../sandbox/SandboxMCP';
 import { GitHubMCPServer } from '../github/GitHubMCP';
+import { AskUserMCPServer } from '../askUser/AskUserMCP';
 import { refreshAccessToken } from '../google/oauth';
 import { CREDENTIAL_TYPES } from '../constants';
 import type { Sandbox } from '@cloudflare/sandbox';
@@ -320,6 +321,47 @@ GitHub__list_issues({ owner: "...", repo: "...", state: "open" })
 GitHub__get_pull_request({ owner: "...", repo: "...", pull_number: 123 })
 \`\`\``;
 
+const ASK_USER_GUIDANCE = `## Asking Users Questions
+Use AskUser when you need user input, preferences, or decisions. This pauses the workflow and shows the user a nice UI to answer questions.
+
+**When to use:**
+- Gathering user preferences or requirements
+- Clarifying ambiguous instructions
+- Getting decisions on implementation choices
+- Offering choices about what direction to take
+
+**Asking questions:**
+\`\`\`
+request_approval({
+  tool: "AskUser__askQuestions",
+  action: "User Input Required",
+  data: {
+    questions: [
+      {
+        question: "What format would you prefer for the output?",
+        header: "Format",
+        options: [
+          { label: "JSON", description: "Structured JSON format" },
+          { label: "Markdown", description: "Human-readable markdown" },
+          { label: "Plain Text", description: "Simple text output" }
+        ],
+        multiSelect: false,
+        allowOther: true
+      }
+    ]
+  }
+})
+\`\`\`
+
+After the user responds, you'll receive their answers in the approval result. Use the selected options to proceed with the task.
+
+**Important:**
+- Keep questions clear and concise
+- Provide 2-10 meaningful options per question
+- Use multiSelect: true when multiple choices make sense
+- Use allowOther: true (default) to let users provide custom responses
+- Maximum 4 questions per request`;
+
 // ============================================================================
 // Registry
 // ============================================================================
@@ -433,6 +475,23 @@ export const ACCOUNT_REGISTRY: AccountDefinition[] = [
           },
         ],
         workflowGuidance: GITHUB_GUIDANCE,
+      },
+    ],
+  },
+  {
+    id: 'askuser',
+    name: 'AskUser',
+    credentialType: 'none',
+    authType: 'none',
+    alwaysEnabled: true,
+    mcps: [
+      {
+        id: 'askuser',
+        name: 'AskUser',
+        serverName: 'AskUser',
+        description: 'Ask users questions with structured options',
+        factory: () => new AskUserMCPServer(),
+        workflowGuidance: ASK_USER_GUIDANCE,
       },
     ],
   },
