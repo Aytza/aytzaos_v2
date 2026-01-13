@@ -3,7 +3,7 @@
  */
 
 interface McpIconProps {
-  type: 'google-docs' | 'google-sheets' | 'gmail' | 'github' | 'sandbox' | 'claude-code' | 'exa' | 'generic';
+  type: 'google-docs' | 'google-sheets' | 'gmail' | 'github' | 'sandbox' | 'claude-code' | 'exa' | 'askuser' | 'generic';
   size?: number;
   className?: string;
 }
@@ -149,6 +149,25 @@ export function McpIcon({ type, size = 20, className = '' }: McpIconProps) {
         </svg>
       );
 
+    case 'askuser':
+      return (
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          style={style}
+          className={className}
+        >
+          {/* Question mark in circle with chat bubble */}
+          <circle cx="12" cy="12" r="10" />
+          <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+          <circle cx="12" cy="17" r="0.5" fill="currentColor" />
+        </svg>
+      );
+
     case 'generic':
     default:
       return (
@@ -227,6 +246,9 @@ export function getIconTypeFromTool(toolName: string): McpIconProps['type'] {
   }
   if (toolName.startsWith('Exa__')) {
     return 'exa';
+  }
+  if (toolName.startsWith('AskUser__')) {
+    return 'askuser';
   }
   return 'generic';
 }

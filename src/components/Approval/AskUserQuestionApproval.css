@@ -1,0 +1,244 @@
+/**
+ * AskUserQuestionApproval Styles
+ *
+ * Styles for the user question/survey approval component.
+ * Features selectable option cards with radio/checkbox indicators.
+ */
+
+/* Container for all questions */
+.askuser-questions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+/* Individual question block */
+.askuser-question {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+/* Question header section */
+.askuser-question-header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.askuser-question-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-accent-primary);
+}
+
+.askuser-question-text {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-text-primary);
+  line-height: 1.4;
+}
+
+.askuser-multi-hint {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
+/* Options container */
+.askuser-options {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+/* Individual option button/card */
+.askuser-option {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: left;
+  width: 100%;
+}
+
+.askuser-option:hover:not(:disabled) {
+  border-color: var(--color-border-hover);
+  background: var(--color-bg-secondary);
+}
+
+.askuser-option.selected {
+  border-color: var(--color-accent-primary);
+  background: color-mix(in srgb, var(--color-accent-primary) 8%, var(--color-bg-primary));
+}
+
+.askuser-option:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Selection indicator (radio or checkbox) */
+.askuser-option-indicator {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+/* Radio button style */
+.askuser-radio {
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--color-border-default);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.askuser-option:hover .askuser-radio {
+  border-color: var(--color-border-hover);
+}
+
+.askuser-radio.checked {
+  border-color: var(--color-accent-primary);
+}
+
+.askuser-radio-dot {
+  width: 10px;
+  height: 10px;
+  background: var(--color-accent-primary);
+  border-radius: 50%;
+}
+
+/* Checkbox style */
+.askuser-checkbox {
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--color-border-default);
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.askuser-option:hover .askuser-checkbox {
+  border-color: var(--color-border-hover);
+}
+
+.askuser-checkbox.checked {
+  background: var(--color-accent-primary);
+  border-color: var(--color-accent-primary);
+}
+
+.askuser-checkbox svg {
+  width: 12px;
+  height: 12px;
+  color: white;
+}
+
+/* Option content (label + description) */
+.askuser-option-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  flex: 1;
+}
+
+.askuser-option-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-primary);
+}
+
+.askuser-option-description {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  line-height: 1.4;
+}
+
+/* "Other" option special styling */
+.askuser-option-other {
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-2);
+}
+
+.askuser-option-other-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+}
+
+.askuser-option-other-toggle:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.askuser-other-input {
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  color: var(--color-text-primary);
+  font-family: inherit;
+  margin-left: calc(18px + var(--space-3));
+  width: calc(100% - 18px - var(--space-3));
+}
+
+.askuser-other-input:focus {
+  outline: none;
+  border-color: var(--color-accent-primary);
+}
+
+.askuser-other-input::placeholder {
+  color: var(--color-text-muted);
+}
+
+.askuser-other-input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Mobile responsiveness */
+@media (max-width: 767px) {
+  .askuser-questions {
+    gap: var(--space-4);
+  }
+
+  .askuser-question-text {
+    font-size: 15px;
+  }
+
+  .askuser-option {
+    padding: var(--space-3);
+  }
+
+  .askuser-option-label {
+    font-size: 14px;
+  }
+
+  .askuser-option-description {
+    font-size: 13px;
+  }
+
+  .askuser-other-input {
+    font-size: 16px; /* Prevent iOS zoom */
+  }
+}

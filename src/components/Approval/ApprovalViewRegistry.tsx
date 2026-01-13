@@ -10,6 +10,7 @@ import { EmailApproval } from './EmailApproval';
 import { GitHubPRApproval } from './GitHubPRApproval';
 import { GoogleDocsApproval } from './GoogleDocsApproval';
 import { GoogleSheetsApproval } from './GoogleSheetsApproval';
+import { AskUserQuestionApproval } from './AskUserQuestionApproval';
 
 /**
  * Props passed to all approval view components
@@ -40,6 +41,7 @@ const APPROVAL_VIEW_REGISTRY: Record<string, ApprovalViewComponent> = {
   'Google_Sheets__appendRows': GoogleSheetsApproval,
   'Google_Sheets__updateCells': GoogleSheetsApproval,
   'Google_Sheets__replaceSheetContent': GoogleSheetsApproval,
+  'AskUser__askQuestions': AskUserQuestionApproval,
 };
 
 /**

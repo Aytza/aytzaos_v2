@@ -16,6 +16,7 @@ import { SheetsMCPServer } from '../google/SheetsMCP';
 import { SandboxMCPServer } from '../sandbox/SandboxMCP';
 import { GitHubMCPServer } from '../github/GitHubMCP';
 import { ExaMCPServer } from '../exa/ExaMCP';
+import { AskUserMCPServer } from '../askUser/AskUserMCP';
 import { refreshAccessToken } from '../google/oauth';
 import { CREDENTIAL_TYPES } from '../constants';
 import type { Sandbox } from '@cloudflare/sandbox';
@@ -339,6 +340,47 @@ Use code context search for:
 - Looking up API usage patterns
 - Getting implementation examples from real codebases`;
 
+const ASK_USER_GUIDANCE = `## Asking Users Questions
+Use AskUser when you need user input, preferences, or decisions. This pauses the workflow and shows the user a nice UI to answer questions.
+
+**When to use:**
+- Gathering user preferences or requirements
+- Clarifying ambiguous instructions
+- Getting decisions on implementation choices
+- Offering choices about what direction to take
+
+**Asking questions:**
+\`\`\`
+request_approval({
+  tool: "AskUser__askQuestions",
+  action: "User Input Required",
+  data: {
+    questions: [
+      {
+        question: "What format would you prefer for the output?",
+        header: "Format",
+        options: [
+          { label: "JSON", description: "Structured JSON format" },
+          { label: "Markdown", description: "Human-readable markdown" },
+          { label: "Plain Text", description: "Simple text output" }
+        ],
+        multiSelect: false,
+        allowOther: true
+      }
+    ]
+  }
+})
+\`\`\`
+
+After the user responds, you'll receive their answers in the approval result. Use the selected options to proceed with the task.
+
+**Important:**
+- Keep questions clear and concise
+- Provide 2-10 meaningful options per question
+- Use multiSelect: true when multiple choices make sense
+- Use allowOther: true (default) to let users provide custom responses
+- Maximum 4 questions per request`;
+
 // ============================================================================
 // Registry
 // ============================================================================
@@ -470,6 +512,23 @@ export const ACCOUNT_REGISTRY: AccountDefinition[] = [
         description: 'Web search and code context powered by Exa AI',
         factory: (_creds, env) => new ExaMCPServer(env?.EXA_API_KEY as string || ''),
         workflowGuidance: EXA_GUIDANCE,
+      },
+    ],
+  },
+  {
+    id: 'askuser',
+    name: 'AskUser',
+    credentialType: 'none',
+    authType: 'none',
+    alwaysEnabled: true,
+    mcps: [
+      {
+        id: 'askuser',
+        name: 'AskUser',
+        serverName: 'AskUser',
+        description: 'Ask users questions with structured options',
+        factory: () => new AskUserMCPServer(),
+        workflowGuidance: ASK_USER_GUIDANCE,
       },
     ],
   },
