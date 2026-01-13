@@ -560,11 +560,10 @@ export default {
       }
 
       // Standalone task plan-specific routes: /api/tasks/:taskId/plans/:planId/*
-      const standalonePlanMatch = url.pathname.match(/^\/api\/tasks\/([^/]+)\/plans\/([^/]+)(\/.*)?$/);
+      const standalonePlanMatch = url.pathname.match(/^\/api\/tasks\/[^/]+\/plans\/([^/]+)(\/.*)?$/);
       if (standalonePlanMatch) {
-        const taskId = standalonePlanMatch[1];
-        const planId = standalonePlanMatch[2];
-        const planAction = standalonePlanMatch[3] || '';
+        const planId = standalonePlanMatch[1];
+        const planAction = standalonePlanMatch[2] || '';
         const userTasksId = `user-tasks-${user.id}`;
         const boardDoId = env.BOARD_DO.idFromName(userTasksId);
         const boardStub = env.BOARD_DO.get(boardDoId) as BoardDOStub;
@@ -610,7 +609,7 @@ export default {
           const limit = parseInt(url.searchParams.get('limit') || '100', 10);
           const offset = parseInt(url.searchParams.get('offset') || '0', 10);
           try {
-            const logs = await boardStub.getWorkflowLogs(planId, { limit, offset });
+            const logs = await boardStub.getWorkflowLogs(planId, limit, offset);
             return jsonResponse({ success: true, data: logs });
           } catch {
             return jsonResponse({

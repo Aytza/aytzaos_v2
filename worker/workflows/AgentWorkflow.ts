@@ -260,6 +260,9 @@ export class AgentWorkflow extends WorkflowEntrypoint<WorkflowEnv, AgentWorkflow
           });
         }
 
+        // Collect server names already added (for deduplication)
+        const existingServerNames = new Set(servers.map(s => s.name.replace(/\s+/g, '_')));
+
         for (const account of getAlwaysEnabledAccounts()) {
           // Skip service_account types if credentials not configured
           if (account.authType === 'service_account') {
@@ -269,9 +272,14 @@ export class AgentWorkflow extends WorkflowEntrypoint<WorkflowEnv, AgentWorkflow
             }
           }
           for (const mcp of account.mcps) {
+            // Skip if a server with this name already exists (avoid duplicate tools)
+            if (existingServerNames.has(mcp.serverName)) {
+              logger.workflow.info('Skipping duplicate MCP server', { serverName: mcp.serverName });
+              continue;
+            }
             const tools = getMCPTools(account.id, mcp.id);
             servers.push({
-              id: `${account.id}-builtin`,
+              id: `${account.id}-${mcp.id}-builtin`,
               name: mcp.serverName, // Use serverName for tool prefix (matches getMCPByServerName lookup)
               type: 'hosted',
               authType: account.authType,
@@ -281,6 +289,7 @@ export class AgentWorkflow extends WorkflowEntrypoint<WorkflowEnv, AgentWorkflow
                 inputSchema: t.inputSchema as unknown as Record<string, unknown>,
               })),
             });
+            existingServerNames.add(mcp.serverName);
           }
         }
 
