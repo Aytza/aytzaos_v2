@@ -29,7 +29,7 @@ const PLAYFUL_SENTENCES = [
 ];
 
 // Map MCP server names to icon types
-function getIconType(name: string): 'gmail' | 'google-docs' | 'google-sheets' | 'github' | 'sandbox' | 'claude-code' | 'generic' {
+function getIconType(name: string): 'gmail' | 'google-docs' | 'google-sheets' | 'github' | 'sandbox' | 'claude-code' | 'exa' | 'generic' {
   const lower = name.toLowerCase();
   if (lower === 'gmail') return 'gmail';
   if (lower === 'google docs' || lower === 'google-docs') return 'google-docs';
@@ -37,6 +37,7 @@ function getIconType(name: string): 'gmail' | 'google-docs' | 'google-sheets' | 
   if (lower === 'github') return 'github';
   if (lower === 'claude code' || lower === 'claude-code') return 'claude-code';
   if (lower === 'sandbox') return 'sandbox';
+  if (lower === 'exa' || lower === 'exa search') return 'exa';
   return 'generic';
 }
 
@@ -44,6 +45,7 @@ function getIconType(name: string): 'gmail' | 'google-docs' | 'google-sheets' | 
 const BUILTIN_TOOLS = [
   { id: 'claude-code', name: 'Claude Code' },
   { id: 'sandbox', name: 'Sandbox' },
+  { id: 'exa', name: 'Exa Search' },
 ];
 
 export function AgentSection({ projectId, onRun, disabled, isRunning }: AgentSectionProps) {

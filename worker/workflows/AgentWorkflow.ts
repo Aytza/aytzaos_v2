@@ -264,7 +264,7 @@ export class AgentWorkflow extends WorkflowEntrypoint<WorkflowEnv, AgentWorkflow
             const tools = getMCPTools(account.id, mcp.id);
             servers.push({
               id: `${account.id}-builtin`,
-              name: mcp.name,
+              name: mcp.serverName, // Use serverName for tool prefix (matches getMCPByServerName lookup)
               type: 'hosted',
               authType: account.authType,
               tools: tools.map(t => ({

@@ -3,7 +3,7 @@
  */
 
 interface McpIconProps {
-  type: 'google-docs' | 'google-sheets' | 'gmail' | 'github' | 'sandbox' | 'claude-code' | 'generic';
+  type: 'google-docs' | 'google-sheets' | 'gmail' | 'github' | 'sandbox' | 'claude-code' | 'exa' | 'generic';
   size?: number;
   className?: string;
 }
@@ -129,6 +129,26 @@ export function McpIcon({ type, size = 20, className = '' }: McpIconProps) {
         </svg>
       );
 
+    case 'exa':
+      return (
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          style={style}
+          className={className}
+        >
+          {/* Search/globe icon for web search */}
+          <circle cx="11" cy="11" r="8" />
+          <line x1="21" y1="21" x2="16.65" y2="16.65" />
+          <line x1="11" y1="8" x2="11" y2="14" />
+          <line x1="8" y1="11" x2="14" y2="11" />
+        </svg>
+      );
+
     case 'generic':
     default:
       return (
@@ -204,6 +224,9 @@ export function getIconTypeFromTool(toolName: string): McpIconProps['type'] {
   }
   if (toolName.startsWith('GitHub__') || toolName.startsWith('Sandbox__')) {
     return 'sandbox';
+  }
+  if (toolName.startsWith('Exa__')) {
+    return 'exa';
   }
   return 'generic';
 }
