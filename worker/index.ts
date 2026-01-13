@@ -18,15 +18,21 @@ import { routeProjectRequest } from './handlers/projects';
 import { handleGeneratePlan, handleResolveCheckpoint, handleCancelWorkflow } from './handlers/workflows';
 import type { BoardDO } from './BoardDO';
 import type { UserDO } from './UserDO';
+import type { RoadmapDO } from './RoadmapDO';
+import type { BugBoardDO } from './BugBoardDO';
 
 export { BoardDO } from './BoardDO';
 export { UserDO } from './UserDO';
+export { RoadmapDO } from './RoadmapDO';
+export { BugBoardDO } from './BugBoardDO';
 export { Sandbox };
 export { AgentWorkflow };
 
 // Type for DO stubs with RPC methods
 type BoardDOStub = DurableObjectStub<BoardDO>;
 type UserDOStub = DurableObjectStub<UserDO>;
+type RoadmapDOStub = DurableObjectStub<RoadmapDO>;
+type BugBoardDOStub = DurableObjectStub<BugBoardDO>;
 
 export default {
   async fetch(request: Request, env: Env, _ctx: ExecutionContext): Promise<Response> {
@@ -103,8 +109,232 @@ export default {
         return jsonResponse({ success: true, data: projects });
       }
 
-      // POST /api/projects - Create a new project
-      if (url.pathname === '/api/projects' && request.method === 'POST') {
+      // ============================================
+      // ROADMAP ROUTES (single shared instance)
+      // ============================================
+
+      if (url.pathname.startsWith('/api/roadmap')) {
+        // Use a fixed ID for the single shared roadmap
+        const roadmapDoId = env.ROADMAP_DO.idFromName('shared-roadmap');
+        const roadmapStub = env.ROADMAP_DO.get(roadmapDoId) as RoadmapDOStub;
+
+        // WebSocket for roadmap
+        if (url.pathname === '/api/roadmap/ws' && request.headers.get('Upgrade') === 'websocket') {
+          const doUrl = new URL(request.url);
+          doUrl.pathname = '/ws';
+          return roadmapStub.fetch(new Request(doUrl.toString(), {
+            method: request.method,
+            headers: request.headers,
+          }));
+        }
+
+        // GET /api/roadmap/items - List all items
+        if (url.pathname === '/api/roadmap/items' && request.method === 'GET') {
+          try {
+            const items = await roadmapStub.getItems();
+            return jsonResponse({ success: true, data: items });
+          } catch (error) {
+            return jsonResponse({
+              success: false,
+              error: { code: 'FETCH_FAILED', message: error instanceof Error ? error.message : 'Failed to fetch items' },
+            }, 500);
+          }
+        }
+
+        // POST /api/roadmap/items - Create item
+        if (url.pathname === '/api/roadmap/items' && request.method === 'POST') {
+          try {
+            const body = await request.json() as { title: string; description?: string; column?: 'ideas' | 'prototyping' | 'building' | 'shipped'; ownerEmail?: string; startDate?: string; endDate?: string; size?: 'S' | 'M' | 'L'; notes?: string };
+            const item = await roadmapStub.createItem({ ...body, createdBy: user.email });
+            return jsonResponse({ success: true, data: item });
+          } catch (error) {
+            return jsonResponse({
+              success: false,
+              error: { code: 'CREATE_FAILED', message: error instanceof Error ? error.message : 'Failed to create item' },
+            }, 500);
+          }
+        }
+
+        // Match /api/roadmap/items/:id
+        const itemMatch = url.pathname.match(/^\/api\/roadmap\/items\/([^/]+)$/);
+        if (itemMatch) {
+          const itemId = itemMatch[1];
+
+          // GET - Get single item
+          if (request.method === 'GET') {
+            try {
+              const item = await roadmapStub.getItem(itemId);
+              if (!item) {
+                return jsonResponse({ success: false, error: { code: 'NOT_FOUND', message: 'Item not found' } }, 404);
+              }
+              return jsonResponse({ success: true, data: item });
+            } catch (error) {
+              return jsonResponse({
+                success: false,
+                error: { code: 'FETCH_FAILED', message: error instanceof Error ? error.message : 'Failed to fetch item' },
+              }, 500);
+            }
+          }
+
+          // PATCH - Update item
+          if (request.method === 'PATCH') {
+            try {
+              const body = await request.json() as { title?: string; description?: string; ownerEmail?: string | null; startDate?: string | null; endDate?: string | null; size?: 'S' | 'M' | 'L'; notes?: string | null };
+              const item = await roadmapStub.updateItem(itemId, body);
+              return jsonResponse({ success: true, data: item });
+            } catch (error) {
+              return jsonResponse({
+                success: false,
+                error: { code: 'UPDATE_FAILED', message: error instanceof Error ? error.message : 'Failed to update item' },
+              }, 500);
+            }
+          }
+
+          // DELETE - Delete item
+          if (request.method === 'DELETE') {
+            try {
+              await roadmapStub.deleteItem(itemId);
+              return jsonResponse({ success: true });
+            } catch (error) {
+              return jsonResponse({
+                success: false,
+                error: { code: 'DELETE_FAILED', message: error instanceof Error ? error.message : 'Failed to delete item' },
+              }, 500);
+            }
+          }
+        }
+
+        // POST /api/roadmap/items/:id/move - Move item
+        const moveMatch = url.pathname.match(/^\/api\/roadmap\/items\/([^/]+)\/move$/);
+        if (moveMatch && request.method === 'POST') {
+          const itemId = moveMatch[1];
+          try {
+            const body = await request.json() as { column: 'ideas' | 'prototyping' | 'building' | 'shipped'; position: number };
+            const item = await roadmapStub.moveItem(itemId, body);
+            return jsonResponse({ success: true, data: item });
+          } catch (error) {
+            return jsonResponse({
+              success: false,
+              error: { code: 'MOVE_FAILED', message: error instanceof Error ? error.message : 'Failed to move item' },
+            }, 500);
+          }
+        }
+      }
+
+      // ============================================
+      // BUG BOARD ROUTES (single shared instance)
+      // ============================================
+
+      if (url.pathname.startsWith('/api/bugs')) {
+        // Use a fixed ID for the single shared bug board
+        const bugBoardDoId = env.BUGBOARD_DO.idFromName('shared-bugboard');
+        const bugBoardStub = env.BUGBOARD_DO.get(bugBoardDoId) as BugBoardDOStub;
+
+        // WebSocket for bug board
+        if (url.pathname === '/api/bugs/ws' && request.headers.get('Upgrade') === 'websocket') {
+          const doUrl = new URL(request.url);
+          doUrl.pathname = '/ws';
+          return bugBoardStub.fetch(new Request(doUrl.toString(), {
+            method: request.method,
+            headers: request.headers,
+          }));
+        }
+
+        // GET /api/bugs/items - List all items
+        if (url.pathname === '/api/bugs/items' && request.method === 'GET') {
+          try {
+            const items = await bugBoardStub.getItems();
+            return jsonResponse({ success: true, data: items });
+          } catch (error) {
+            return jsonResponse({
+              success: false,
+              error: { code: 'FETCH_FAILED', message: error instanceof Error ? error.message : 'Failed to fetch items' },
+            }, 500);
+          }
+        }
+
+        // POST /api/bugs/items - Create item
+        if (url.pathname === '/api/bugs/items' && request.method === 'POST') {
+          try {
+            const body = await request.json() as { title: string; description?: string; column?: 'reported' | 'triaged' | 'fixing' | 'fixed'; severity?: 'low' | 'medium' | 'high'; ownerEmail?: string; screenshots?: string[] };
+            const item = await bugBoardStub.createItem({ ...body, createdBy: user.email });
+            return jsonResponse({ success: true, data: item });
+          } catch (error) {
+            return jsonResponse({
+              success: false,
+              error: { code: 'CREATE_FAILED', message: error instanceof Error ? error.message : 'Failed to create item' },
+            }, 500);
+          }
+        }
+
+        // Match /api/bugs/items/:id
+        const itemMatch = url.pathname.match(/^\/api\/bugs\/items\/([^/]+)$/);
+        if (itemMatch) {
+          const itemId = itemMatch[1];
+
+          // GET - Get single item
+          if (request.method === 'GET') {
+            try {
+              const item = await bugBoardStub.getItem(itemId);
+              if (!item) {
+                return jsonResponse({ success: false, error: { code: 'NOT_FOUND', message: 'Item not found' } }, 404);
+              }
+              return jsonResponse({ success: true, data: item });
+            } catch (error) {
+              return jsonResponse({
+                success: false,
+                error: { code: 'FETCH_FAILED', message: error instanceof Error ? error.message : 'Failed to fetch item' },
+              }, 500);
+            }
+          }
+
+          // PATCH - Update item
+          if (request.method === 'PATCH') {
+            try {
+              const body = await request.json() as { title?: string; description?: string; severity?: 'low' | 'medium' | 'high'; ownerEmail?: string | null; screenshots?: string[] };
+              const item = await bugBoardStub.updateItem(itemId, body);
+              return jsonResponse({ success: true, data: item });
+            } catch (error) {
+              return jsonResponse({
+                success: false,
+                error: { code: 'UPDATE_FAILED', message: error instanceof Error ? error.message : 'Failed to update item' },
+              }, 500);
+            }
+          }
+
+          // DELETE - Delete item
+          if (request.method === 'DELETE') {
+            try {
+              await bugBoardStub.deleteItem(itemId);
+              return jsonResponse({ success: true });
+            } catch (error) {
+              return jsonResponse({
+                success: false,
+                error: { code: 'DELETE_FAILED', message: error instanceof Error ? error.message : 'Failed to delete item' },
+              }, 500);
+            }
+          }
+        }
+
+        // POST /api/bugs/items/:id/move - Move item
+        const bugMoveMatch = url.pathname.match(/^\/api\/bugs\/items\/([^/]+)\/move$/);
+        if (bugMoveMatch && request.method === 'POST') {
+          const itemId = bugMoveMatch[1];
+          try {
+            const body = await request.json() as { column: 'reported' | 'triaged' | 'fixing' | 'fixed'; position: number };
+            const item = await bugBoardStub.moveItem(itemId, body);
+            return jsonResponse({ success: true, data: item });
+          } catch (error) {
+            return jsonResponse({
+              success: false,
+              error: { code: 'MOVE_FAILED', message: error instanceof Error ? error.message : 'Failed to move item' },
+            }, 500);
+          }
+        }
+      }
+
+      // POST /api/projects - Create a new project (also supports /api/boards for backward compatibility)
+      if ((url.pathname === '/api/projects' || url.pathname === '/api/boards') && request.method === 'POST') {
         const data = await request.json() as { name: string };
         const projectId = crypto.randomUUID();
 

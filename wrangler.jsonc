@@ -47,6 +47,14 @@
         "name": "SANDBOX",
         "class_name": "Sandbox",
       },
+      {
+        "name": "ROADMAP_DO",
+        "class_name": "RoadmapDO",
+      },
+      {
+        "name": "BUGBOARD_DO",
+        "class_name": "BugBoardDO",
+      },
     ],
   },
   "migrations": [
@@ -57,6 +65,10 @@
     {
       "tag": "v2",
       "new_sqlite_classes": ["UserDO"],
+    },
+    {
+      "tag": "v3",
+      "new_sqlite_classes": ["RoadmapDO", "BugBoardDO"],
     },
   ],
   "env": {
@@ -98,6 +110,14 @@
           {
             "name": "SANDBOX",
             "class_name": "Sandbox",
+          },
+          {
+            "name": "ROADMAP_DO",
+            "class_name": "RoadmapDO",
+          },
+          {
+            "name": "BUGBOARD_DO",
+            "class_name": "BugBoardDO",
           },
         ],
       },

@@ -11,6 +11,12 @@ import type {
   WorkflowLog,
   User,
   Agent,
+  RoadmapItem,
+  RoadmapColumn,
+  ItemSize,
+  BugItem,
+  BugColumn,
+  BugSeverity,
 } from '../types';
 
 const API_BASE = '/api';
@@ -803,5 +809,127 @@ export async function getLinkMetadata(
   return request<LinkMetadata | null>(`/projects/${projectId}/links/metadata`, {
     method: 'POST',
     body: JSON.stringify({ url }),
+  });
+}
+
+// ============================================
+// ROADMAP
+// ============================================
+
+export async function getRoadmapItems(): Promise<ApiResponse<RoadmapItem[]>> {
+  return request<RoadmapItem[]>('/roadmap/items');
+}
+
+export async function getRoadmapItem(id: string): Promise<ApiResponse<RoadmapItem>> {
+  return request<RoadmapItem>(`/roadmap/items/${id}`);
+}
+
+export async function createRoadmapItem(data: {
+  title: string;
+  description?: string;
+  column?: RoadmapColumn;
+  ownerEmail?: string;
+  startDate?: string;
+  endDate?: string;
+  size?: ItemSize;
+  notes?: string;
+}): Promise<ApiResponse<RoadmapItem>> {
+  return request<RoadmapItem>('/roadmap/items', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateRoadmapItem(
+  id: string,
+  data: {
+    title?: string;
+    description?: string;
+    ownerEmail?: string | null;
+    startDate?: string | null;
+    endDate?: string | null;
+    size?: ItemSize;
+    notes?: string | null;
+  }
+): Promise<ApiResponse<RoadmapItem>> {
+  return request<RoadmapItem>(`/roadmap/items/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function moveRoadmapItem(
+  id: string,
+  column: RoadmapColumn,
+  position: number
+): Promise<ApiResponse<RoadmapItem>> {
+  return request<RoadmapItem>(`/roadmap/items/${id}/move`, {
+    method: 'POST',
+    body: JSON.stringify({ column, position }),
+  });
+}
+
+export async function deleteRoadmapItem(id: string): Promise<ApiResponse<void>> {
+  return request<void>(`/roadmap/items/${id}`, {
+    method: 'DELETE',
+  });
+}
+
+// ============================================
+// BUG BOARD
+// ============================================
+
+export async function getBugItems(): Promise<ApiResponse<BugItem[]>> {
+  return request<BugItem[]>('/bugs/items');
+}
+
+export async function getBugItem(id: string): Promise<ApiResponse<BugItem>> {
+  return request<BugItem>(`/bugs/items/${id}`);
+}
+
+export async function createBugItem(data: {
+  title: string;
+  description?: string;
+  column?: BugColumn;
+  severity?: BugSeverity;
+  ownerEmail?: string;
+  screenshots?: string[];
+}): Promise<ApiResponse<BugItem>> {
+  return request<BugItem>('/bugs/items', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateBugItem(
+  id: string,
+  data: {
+    title?: string;
+    description?: string;
+    severity?: BugSeverity;
+    ownerEmail?: string | null;
+    screenshots?: string[];
+  }
+): Promise<ApiResponse<BugItem>> {
+  return request<BugItem>(`/bugs/items/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function moveBugItem(
+  id: string,
+  column: BugColumn,
+  position: number
+): Promise<ApiResponse<BugItem>> {
+  return request<BugItem>(`/bugs/items/${id}/move`, {
+    method: 'POST',
+    body: JSON.stringify({ column, position }),
+  });
+}
+
+export async function deleteBugItem(id: string): Promise<ApiResponse<void>> {
+  return request<void>(`/bugs/items/${id}`, {
+    method: 'DELETE',
   });
 }

@@ -1,0 +1,493 @@
+/* Bug Board Container */
+.bugboard {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  width: 100%;
+  height: 100%;
+  padding: var(--space-4);
+  overflow: hidden;
+}
+
+.bugboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-4);
+  flex-shrink: 0;
+}
+
+.bugboard-header h1 {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+.bugboard-header h1::before {
+  content: "> ";
+  color: var(--color-text-muted);
+}
+
+.bugboard-columns {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-4);
+  flex: 1;
+  min-height: 0;
+}
+
+.bugboard-column {
+  display: flex;
+  flex-direction: column;
+  background: var(--color-bg-secondary);
+  border-radius: var(--border-radius);
+  padding: var(--space-3);
+  min-height: 0;
+}
+
+.bugboard-column-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-3);
+  flex-shrink: 0;
+}
+
+.bugboard-column-header h2 {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.bugboard-column-count {
+  background: var(--color-bg-tertiary);
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: var(--border-radius);
+}
+
+.bugboard-column-items {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+/* Card */
+.bugboard-card {
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--border-radius);
+  padding: var(--space-3);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.bugboard-card:hover {
+  border-color: var(--color-border-focus);
+  box-shadow: var(--shadow-sm);
+}
+
+.bugboard-card:active {
+  cursor: grabbing;
+}
+
+.bugboard-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-2);
+}
+
+.bugboard-card-severity {
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: var(--border-radius);
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.bugboard-card-owner {
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 50%;
+  background: var(--color-accent-primary);
+  color: white;
+  font-size: 10px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.bugboard-card-title {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-primary);
+  line-height: 1.4;
+}
+
+.bugboard-card-description {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  margin-top: var(--space-2);
+  line-height: 1.4;
+}
+
+/* Add Button */
+.bugboard-add-btn {
+  border: 1px dashed var(--color-border-default);
+  background: transparent;
+  color: var(--color-text-muted);
+  padding: var(--space-2);
+  border-radius: var(--border-radius);
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  transition: all var(--transition-fast);
+  width: 100%;
+  margin-top: var(--space-2);
+}
+
+.bugboard-add-btn:hover {
+  border-color: #ef4444;
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.05);
+}
+
+/* Add Form */
+.bugboard-add-form {
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--border-radius);
+  padding: var(--space-3);
+}
+
+.bugboard-add-form input {
+  width: 100%;
+  border: none;
+  background: transparent;
+  color: var(--color-text-primary);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  outline: none;
+  margin-bottom: var(--space-2);
+}
+
+.bugboard-add-form-actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.bugboard-add-form-btn {
+  padding: 4px 12px;
+  border: none;
+  border-radius: var(--border-radius);
+  font-size: 12px;
+  cursor: pointer;
+  background: var(--color-bg-tertiary);
+  color: var(--color-text-secondary);
+}
+
+.bugboard-add-form-btn.primary {
+  background: #ef4444;
+  color: white;
+}
+
+/* Modal */
+.bugboard-modal-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.bugboard-modal-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.bugboard-modal-field label {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.bugboard-modal-field input,
+.bugboard-modal-field textarea,
+.bugboard-modal-field select {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: 0.375rem;
+  background: var(--color-bg-secondary);
+  color: var(--color-text-primary);
+  font-size: 0.875rem;
+  outline: none;
+}
+
+.bugboard-modal-field input:focus,
+.bugboard-modal-field textarea:focus,
+.bugboard-modal-field select:focus {
+  border-color: var(--color-accent-primary);
+}
+
+.bugboard-modal-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.bugboard-severity-buttons {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.severity-btn {
+  flex: 1;
+  padding: 0.5rem;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-secondary);
+  color: var(--color-text-secondary);
+  border-radius: 0.375rem;
+  cursor: pointer;
+  font-weight: 600;
+  text-transform: capitalize;
+  transition: all 0.15s ease;
+}
+
+.severity-btn:hover {
+  border-color: var(--color-accent-primary);
+}
+
+.severity-btn.severity-low.active {
+  background: #dcfce7;
+  color: #166534;
+  border-color: #166534;
+}
+
+.severity-btn.severity-medium.active {
+  background: #fef3c7;
+  color: #92400e;
+  border-color: #92400e;
+}
+
+.severity-btn.severity-high.active {
+  background: #fecaca;
+  color: #991b1b;
+  border-color: #991b1b;
+}
+
+.bugboard-modal-meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--color-border);
+}
+
+.bugboard-modal-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 1rem;
+  border-top: 1px solid var(--color-border);
+}
+
+.bugboard-modal-actions button {
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: 0.375rem;
+  background: var(--color-bg-secondary);
+  color: var(--color-text-primary);
+  cursor: pointer;
+  font-size: 0.875rem;
+  transition: all 0.15s ease;
+}
+
+.bugboard-modal-actions button:hover {
+  background: var(--color-bg-tertiary);
+}
+
+.bugboard-modal-actions .btn-primary {
+  background: var(--color-accent-primary);
+  color: white;
+  border-color: var(--color-accent-primary);
+}
+
+.bugboard-modal-actions .btn-primary:hover {
+  opacity: 0.9;
+}
+
+.bugboard-modal-actions .btn-danger-outline {
+  color: #ef4444;
+  border-color: #ef4444;
+  background: transparent;
+}
+
+.bugboard-modal-actions .btn-danger-outline:hover {
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.bugboard-modal-actions-right {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.bugboard-delete-confirm {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.bugboard-delete-confirm span {
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+}
+
+.bugboard-delete-confirm .btn-danger {
+  background: #ef4444;
+  color: white;
+  border-color: #ef4444;
+}
+
+/* Screenshots */
+.bugboard-screenshots {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.bugboard-screenshot-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+  gap: 0.5rem;
+}
+
+.bugboard-screenshot-item {
+  position: relative;
+  aspect-ratio: 1;
+  border-radius: 0.375rem;
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+}
+
+.bugboard-screenshot-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+
+.bugboard-screenshot-item img:hover {
+  transform: scale(1.05);
+}
+
+.bugboard-screenshot-remove {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.6);
+  color: white;
+  border: none;
+  cursor: pointer;
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.bugboard-screenshot-item:hover .bugboard-screenshot-remove {
+  opacity: 1;
+}
+
+.bugboard-screenshot-remove:hover {
+  background: #ef4444;
+}
+
+.bugboard-screenshot-add {
+  padding: 0.5rem 1rem;
+  border: 1px dashed var(--color-border);
+  background: transparent;
+  color: var(--color-text-secondary);
+  border-radius: 0.375rem;
+  cursor: pointer;
+  font-size: 0.875rem;
+  transition: all 0.15s ease;
+}
+
+.bugboard-screenshot-add:hover {
+  border-color: var(--color-accent-primary);
+  color: var(--color-accent-primary);
+}
+
+.bugboard-screenshot-preview {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.9);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  cursor: pointer;
+  padding: 2rem;
+}
+
+.bugboard-screenshot-preview img {
+  max-width: 90%;
+  max-height: 80vh;
+  object-fit: contain;
+  border-radius: 0.5rem;
+}
+
+.bugboard-screenshot-preview-close {
+  margin-top: 1rem;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.875rem;
+}
+
+/* Bug card screenshot indicator */
+.bugboard-card-screenshots {
+  display: flex;
+  gap: 0.25rem;
+  margin-top: 0.5rem;
+}
+
+.bugboard-card-screenshot-thumb {
+  width: 32px;
+  height: 32px;
+  border-radius: 0.25rem;
+  object-fit: cover;
+  border: 1px solid var(--color-border);
+}
+
+.bugboard-card-screenshot-count {
+  width: 32px;
+  height: 32px;
+  border-radius: 0.25rem;
+  background: var(--color-bg-tertiary);
+  color: var(--color-text-secondary);
+  font-size: 0.625rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}

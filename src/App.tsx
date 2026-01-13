@@ -7,6 +7,8 @@ import { Header } from './components/Header/Header';
 import { Home } from './components/Home/Home';
 import { Board } from './components/Board/Board';
 import { Tasks } from './components/Tasks';
+import { Roadmap } from './components/Roadmap';
+import { BugBoard } from './components/BugBoard';
 import { GitHubCallback } from './components/GitHubCallback';
 import { GoogleCallback } from './components/GoogleCallback';
 import { MCPOAuthCallback } from './components/MCP/MCPOAuthCallback';
@@ -120,6 +122,8 @@ function AppContent() {
             <Route path="/project/:projectId" element={<Board />} />
             {/* Backward compatibility for old board URLs */}
             <Route path="/board/:projectId" element={<Board />} />
+            <Route path="/roadmap" element={<Roadmap />} />
+            <Route path="/bugs" element={<BugBoard />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </main>

@@ -28,6 +28,8 @@ export function Header() {
 
   const isHome = location.pathname === '/';
   const isTasksPage = location.pathname === '/tasks';
+  const isRoadmap = location.pathname === '/roadmap';
+  const isBugs = location.pathname === '/bugs';
 
   // Auto-open settings modal when returning from GitHub OAuth
   useEffect(() => {
@@ -87,6 +89,20 @@ export function Header() {
     <header className="header">
       <div className="header-left">
         <WeftLogo onClick={handleGoHome} />
+        <nav className="header-nav">
+          <button
+            className={`header-nav-link ${isRoadmap ? 'active' : ''}`}
+            onClick={() => navigate('/roadmap')}
+          >
+            Roadmap
+          </button>
+          <button
+            className={`header-nav-link ${isBugs ? 'active' : ''}`}
+            onClick={() => navigate('/bugs')}
+          >
+            Bugs
+          </button>
+        </nav>
       </div>
 
       <div className="header-center">

@@ -347,5 +347,65 @@ export interface WorkflowLog {
   metadata?: WorkflowLogMetadata;
 }
 
+// ============================================
+// ROADMAP TYPES
+// ============================================
+
+export type RoadmapColumn = 'ideas' | 'prototyping' | 'building' | 'shipped';
+export type ItemSize = 'S' | 'M' | 'L';
+
+export interface RoadmapItem {
+  id: string;
+  title: string;
+  description: string | null;
+  column: RoadmapColumn;
+  position: number;
+  ownerEmail: string | null;
+  startDate: string | null;
+  endDate: string | null;
+  size: ItemSize;
+  notes: string | null;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ============================================
+// BUG BOARD TYPES
+// ============================================
+
+export type BugColumn = 'reported' | 'triaged' | 'fixing' | 'fixed';
+export type BugSeverity = 'low' | 'medium' | 'high';
+
+export interface BugItem {
+  id: string;
+  title: string;
+  description: string | null;
+  column: BugColumn;
+  position: number;
+  severity: BugSeverity;
+  ownerEmail: string | null;
+  screenshots: string[]; // Array of base64 data URLs
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ============================================
+// TEAM MEMBERS
+// ============================================
+
+export interface TeamMember {
+  name: string;
+  email: string;
+}
+
+export const TEAM_MEMBERS: TeamMember[] = [
+  { name: 'Pranay Madan', email: 'pranay@aytza.com' },
+  { name: 'Sari Kaganoff', email: 'sari@aytza.com' },
+  { name: 'Ali Yousefli', email: 'ali@aytza.com' },
+  { name: 'Juliarose', email: 'jr@aytza.com' },
+];
+
 // Re-export constants for convenience
 export { CREDENTIAL_TYPES, type CredentialType } from '../constants';
