@@ -1,5 +1,5 @@
 /**
- * Board-scoped route handlers
+ * Project-scoped route handlers
  */
 
 import { jsonResponse } from '../utils/response';
@@ -12,60 +12,60 @@ type BoardDOStub = DurableObjectStub<BoardDO>;
 type UserDOStub = DurableObjectStub<UserDO>;
 
 /**
- * Route board-scoped requests to appropriate RPC methods
+ * Route project-scoped requests to appropriate RPC methods
  */
-export async function routeBoardRequest(
+export async function routeProjectRequest(
   request: Request,
   boardStub: BoardDOStub,
   userStub: UserDOStub,
-  boardId: string,
+  projectId: string,
   subPath: string,
   env: Env,
-  _user: AuthUser
+  user: AuthUser
 ): Promise<Response> {
   const method = request.method;
 
-  // GET /api/boards/:id - Get board
+  // GET /api/projects/:id - Get project
   if (!subPath && method === 'GET') {
     try {
-      const board = await boardStub.getBoard(boardId);
-      return jsonResponse({ success: true, data: board });
+      const project = await boardStub.getProject(projectId);
+      return jsonResponse({ success: true, data: project });
     } catch (error) {
       return jsonResponse({
         success: false,
-        error: { code: 'NOT_FOUND', message: error instanceof Error ? error.message : 'Board not found' },
+        error: { code: 'NOT_FOUND', message: error instanceof Error ? error.message : 'Project not found' },
       }, 404);
     }
   }
 
-  // PUT /api/boards/:id - Update board
+  // PUT /api/projects/:id - Update project
   if (!subPath && method === 'PUT') {
     const data = await request.json() as { name?: string };
     try {
-      const board = await boardStub.updateBoard(boardId, data);
-      // Also update UserDO's board list if name changed
+      const project = await boardStub.updateProject(projectId, data);
+      // Also update UserDO's project list if name changed
       if (data.name) {
-        await userStub.updateBoardName(boardId, data.name);
+        await userStub.updateProjectName(projectId, data.name);
       }
-      return jsonResponse({ success: true, data: board });
+      return jsonResponse({ success: true, data: project });
     } catch (error) {
       return jsonResponse({
         success: false,
-        error: { code: 'UPDATE_FAILED', message: error instanceof Error ? error.message : 'Failed to update board' },
+        error: { code: 'UPDATE_FAILED', message: error instanceof Error ? error.message : 'Failed to update project' },
       }, 500);
     }
   }
 
-  // DELETE /api/boards/:id - Delete board
+  // DELETE /api/projects/:id - Delete project
   if (!subPath && method === 'DELETE') {
     try {
-      await boardStub.deleteBoard(boardId);
-      await userStub.removeBoard(boardId);
+      await boardStub.deleteProject(projectId);
+      await userStub.removeProject(projectId);
       return jsonResponse({ success: true });
     } catch (error) {
       return jsonResponse({
         success: false,
-        error: { code: 'DELETE_FAILED', message: error instanceof Error ? error.message : 'Failed to delete board' },
+        error: { code: 'DELETE_FAILED', message: error instanceof Error ? error.message : 'Failed to delete project' },
       }, 500);
     }
   }
@@ -74,12 +74,12 @@ export async function routeBoardRequest(
   // COLUMN ROUTES
   // ============================================
 
-  // POST /api/boards/:id/columns - Create column
+  // POST /api/projects/:id/columns - Create column
   const createColumnMatch = subPath === '/columns' && method === 'POST';
   if (createColumnMatch) {
     const data = await request.json() as { name: string };
     try {
-      const column = await boardStub.createColumn(boardId, data);
+      const column = await boardStub.createColumn(projectId, data);
       return jsonResponse({ success: true, data: column });
     } catch (error) {
       return jsonResponse({
@@ -89,7 +89,7 @@ export async function routeBoardRequest(
     }
   }
 
-  // PUT /api/boards/:id/columns/:columnId - Update column
+  // PUT /api/projects/:id/columns/:columnId - Update column
   const updateColumnMatch = subPath.match(/^\/columns\/([^/]+)$/);
   if (updateColumnMatch && method === 'PUT') {
     const columnId = updateColumnMatch[1];
@@ -105,7 +105,7 @@ export async function routeBoardRequest(
     }
   }
 
-  // DELETE /api/boards/:id/columns/:columnId - Delete column
+  // DELETE /api/projects/:id/columns/:columnId - Delete column
   if (updateColumnMatch && method === 'DELETE') {
     const columnId = updateColumnMatch[1];
     try {
@@ -123,11 +123,11 @@ export async function routeBoardRequest(
   // TASK ROUTES
   // ============================================
 
-  // POST /api/boards/:id/tasks - Create task
+  // POST /api/projects/:id/tasks - Create task
   if (subPath === '/tasks' && method === 'POST') {
-    const data = await request.json() as { columnId: string; title: string; description?: string; priority?: string; context?: object };
+    const data = await request.json() as { columnId?: string; title: string; description?: string; priority?: string; context?: object };
     try {
-      const task = await boardStub.createTask({ ...data, boardId });
+      const task = await boardStub.createTask({ ...data, projectId });
       return jsonResponse({ success: true, data: task });
     } catch (error) {
       return jsonResponse({
@@ -137,7 +137,7 @@ export async function routeBoardRequest(
     }
   }
 
-  // GET /api/boards/:id/tasks/:taskId - Get task
+  // GET /api/projects/:id/tasks/:taskId - Get task
   const taskMatch = subPath.match(/^\/tasks\/([^/]+)$/);
   if (taskMatch && method === 'GET') {
     const taskId = taskMatch[1];
@@ -152,7 +152,7 @@ export async function routeBoardRequest(
     }
   }
 
-  // PUT /api/boards/:id/tasks/:taskId - Update task
+  // PUT /api/projects/:id/tasks/:taskId - Update task
   if (taskMatch && method === 'PUT') {
     const taskId = taskMatch[1];
     const data = await request.json() as { title?: string; description?: string; priority?: string; context?: object };
@@ -167,7 +167,7 @@ export async function routeBoardRequest(
     }
   }
 
-  // DELETE /api/boards/:id/tasks/:taskId - Delete task
+  // DELETE /api/projects/:id/tasks/:taskId - Delete task
   if (taskMatch && method === 'DELETE') {
     const taskId = taskMatch[1];
     try {
@@ -181,7 +181,7 @@ export async function routeBoardRequest(
     }
   }
 
-  // POST /api/boards/:id/tasks/:taskId/move - Move task
+  // POST /api/projects/:id/tasks/:taskId/move - Move task
   const moveTaskMatch = subPath.match(/^\/tasks\/([^/]+)\/move$/);
   if (moveTaskMatch && method === 'POST') {
     const taskId = moveTaskMatch[1];
@@ -197,13 +197,14 @@ export async function routeBoardRequest(
     }
   }
 
-  // POST /api/boards/:id/tasks/:taskId/generate-plan - Generate plan (special handler)
+  // POST /api/projects/:id/tasks/:taskId/generate-plan - Generate plan (special handler)
   const generatePlanMatch = subPath.match(/^\/tasks\/([^/]+)\/generate-plan$/);
   if (generatePlanMatch && method === 'POST') {
-    return handleGeneratePlan(env, boardStub, boardId, generatePlanMatch[1]);
+    const body = await request.json() as { agentId?: string };
+    return handleGeneratePlan(env, boardStub, projectId, generatePlanMatch[1], user.id, body.agentId);
   }
 
-  // GET /api/boards/:id/tasks/:taskId/plan - Get task workflow plan
+  // GET /api/projects/:id/tasks/:taskId/plan - Get task workflow plan
   const taskPlanMatch = subPath.match(/^\/tasks\/([^/]+)\/plan$/);
   if (taskPlanMatch && method === 'GET') {
     const taskId = taskPlanMatch[1];
@@ -218,12 +219,12 @@ export async function routeBoardRequest(
     }
   }
 
-  // POST /api/boards/:id/tasks/:taskId/plan - Create workflow plan
+  // POST /api/projects/:id/tasks/:taskId/plan - Create workflow plan
   if (taskPlanMatch && method === 'POST') {
     const taskId = taskPlanMatch[1];
     const data = await request.json() as { id?: string; summary?: string; generatedCode?: string; steps?: object[] };
     try {
-      const plan = await boardStub.createWorkflowPlan(taskId, { ...data, boardId });
+      const plan = await boardStub.createWorkflowPlan(taskId, { ...data, projectId });
       return jsonResponse({ success: true, data: plan });
     } catch (error) {
       return jsonResponse({
@@ -237,10 +238,10 @@ export async function routeBoardRequest(
   // WORKFLOW PLAN ROUTES
   // ============================================
 
-  // GET /api/boards/:id/workflow-plans - Get all workflow plans for board
+  // GET /api/projects/:id/workflow-plans - Get all workflow plans for project
   if (subPath === '/workflow-plans' && method === 'GET') {
     try {
-      const plans = await boardStub.getBoardWorkflowPlans(boardId);
+      const plans = await boardStub.getProjectWorkflowPlans(projectId);
       return jsonResponse({ success: true, data: plans });
     } catch (error) {
       return jsonResponse({
@@ -250,7 +251,7 @@ export async function routeBoardRequest(
     }
   }
 
-  // GET /api/boards/:id/plans/:planId - Get workflow plan
+  // GET /api/projects/:id/plans/:planId - Get workflow plan
   const planMatch = subPath.match(/^\/plans\/([^/]+)$/);
   if (planMatch && method === 'GET') {
     const planId = planMatch[1];
@@ -265,7 +266,7 @@ export async function routeBoardRequest(
     }
   }
 
-  // PUT /api/boards/:id/plans/:planId - Update workflow plan
+  // PUT /api/projects/:id/plans/:planId - Update workflow plan
   if (planMatch && method === 'PUT') {
     const planId = planMatch[1];
     const data = await request.json() as { status?: string; summary?: string; generatedCode?: string; steps?: object[]; currentStepIndex?: number; checkpointData?: object; result?: object };
@@ -280,7 +281,7 @@ export async function routeBoardRequest(
     }
   }
 
-  // DELETE /api/boards/:id/plans/:planId - Delete workflow plan
+  // DELETE /api/projects/:id/plans/:planId - Delete workflow plan
   if (planMatch && method === 'DELETE') {
     const planId = planMatch[1];
     try {
@@ -294,7 +295,7 @@ export async function routeBoardRequest(
     }
   }
 
-  // POST /api/boards/:id/plans/:planId/approve - Approve workflow plan
+  // POST /api/projects/:id/plans/:planId/approve - Approve workflow plan
   const approvePlanMatch = subPath.match(/^\/plans\/([^/]+)\/approve$/);
   if (approvePlanMatch && method === 'POST') {
     const planId = approvePlanMatch[1];
@@ -309,19 +310,19 @@ export async function routeBoardRequest(
     }
   }
 
-  // POST /api/boards/:id/plans/:planId/checkpoint - Resolve checkpoint
+  // POST /api/projects/:id/plans/:planId/checkpoint - Resolve checkpoint
   const checkpointMatch = subPath.match(/^\/plans\/([^/]+)\/checkpoint$/);
   if (checkpointMatch && method === 'POST') {
-    return handleResolveCheckpoint(request, env, boardStub, boardId, checkpointMatch[1]);
+    return handleResolveCheckpoint(request, env, boardStub, projectId, checkpointMatch[1]);
   }
 
-  // POST /api/boards/:id/plans/:planId/cancel - Cancel workflow
+  // POST /api/projects/:id/plans/:planId/cancel - Cancel workflow
   const cancelMatch = subPath.match(/^\/plans\/([^/]+)\/cancel$/);
   if (cancelMatch && method === 'POST') {
-    return handleCancelWorkflow(env, boardStub, boardId, cancelMatch[1]);
+    return handleCancelWorkflow(env, boardStub, projectId, cancelMatch[1]);
   }
 
-  // GET /api/boards/:id/plans/:planId/logs - Get workflow logs
+  // GET /api/projects/:id/plans/:planId/logs - Get workflow logs
   const logsMatch = subPath.match(/^\/plans\/([^/]+)\/logs$/);
   if (logsMatch && method === 'GET') {
     const planId = logsMatch[1];
@@ -343,10 +344,10 @@ export async function routeBoardRequest(
   // CREDENTIAL ROUTES
   // ============================================
 
-  // GET /api/boards/:id/credentials - Get credentials
+  // GET /api/projects/:id/credentials - Get credentials
   if (subPath === '/credentials' && method === 'GET') {
     try {
-      const credentials = await boardStub.getCredentials(boardId);
+      const credentials = await boardStub.getCredentials(projectId);
       return jsonResponse({ success: true, data: credentials });
     } catch (error) {
       return jsonResponse({
@@ -356,11 +357,11 @@ export async function routeBoardRequest(
     }
   }
 
-  // POST /api/boards/:id/credentials - Create credential
+  // POST /api/projects/:id/credentials - Create credential
   if (subPath === '/credentials' && method === 'POST') {
     const data = await request.json() as { type: string; name: string; value: string; metadata?: object };
     try {
-      const credential = await boardStub.createCredential(boardId, data);
+      const credential = await boardStub.createCredential(projectId, data);
       return jsonResponse({ success: true, data: credential });
     } catch (error) {
       return jsonResponse({
@@ -370,12 +371,12 @@ export async function routeBoardRequest(
     }
   }
 
-  // GET /api/boards/:id/credentials/type/:type/value - Get credential value
+  // GET /api/projects/:id/credentials/type/:type/value - Get credential value
   const credentialValueMatch = subPath.match(/^\/credentials\/type\/([^/]+)\/value$/);
   if (credentialValueMatch && method === 'GET') {
     const type = credentialValueMatch[1];
     try {
-      const value = await boardStub.getCredentialValue(boardId, type);
+      const value = await boardStub.getCredentialValue(projectId, type);
       return jsonResponse({ success: true, data: { value } });
     } catch (error) {
       return jsonResponse({
@@ -385,12 +386,12 @@ export async function routeBoardRequest(
     }
   }
 
-  // GET /api/boards/:id/credentials/type/:type/full - Get credential with metadata
+  // GET /api/projects/:id/credentials/type/:type/full - Get credential with metadata
   const credentialFullMatch = subPath.match(/^\/credentials\/type\/([^/]+)\/full$/);
   if (credentialFullMatch && method === 'GET') {
     const type = credentialFullMatch[1];
     try {
-      const data = await boardStub.getCredentialFull(boardId, type);
+      const data = await boardStub.getCredentialFull(projectId, type);
       return jsonResponse({ success: true, data });
     } catch (error) {
       return jsonResponse({
@@ -400,13 +401,13 @@ export async function routeBoardRequest(
     }
   }
 
-  // PUT /api/boards/:id/credentials/type/:type - Update credential value
+  // PUT /api/projects/:id/credentials/type/:type - Update credential value
   const credentialTypeMatch = subPath.match(/^\/credentials\/type\/([^/]+)$/);
   if (credentialTypeMatch && method === 'PUT') {
     const type = credentialTypeMatch[1];
     const data = await request.json() as { value: string; metadata?: Record<string, unknown> };
     try {
-      const result = await boardStub.updateCredentialValue(boardId, type, data.value, data.metadata);
+      const result = await boardStub.updateCredentialValue(projectId, type, data.value, data.metadata);
       return jsonResponse({ success: true, data: result });
     } catch (error) {
       return jsonResponse({
@@ -416,12 +417,12 @@ export async function routeBoardRequest(
     }
   }
 
-  // DELETE /api/boards/:id/credentials/:credentialId - Delete credential
+  // DELETE /api/projects/:id/credentials/:credentialId - Delete credential
   const deleteCredentialMatch = subPath.match(/^\/credentials\/([^/]+)$/);
   if (deleteCredentialMatch && method === 'DELETE') {
     const credentialId = deleteCredentialMatch[1];
     try {
-      await boardStub.deleteCredential(boardId, credentialId);
+      await boardStub.deleteCredential(projectId, credentialId);
       return jsonResponse({ success: true });
     } catch (error) {
       return jsonResponse({
@@ -435,10 +436,10 @@ export async function routeBoardRequest(
   // MCP SERVER ROUTES
   // ============================================
 
-  // GET /api/boards/:id/mcp-servers - Get MCP servers
+  // GET /api/projects/:id/mcp-servers - Get MCP servers
   if (subPath === '/mcp-servers' && method === 'GET') {
     try {
-      const servers = await boardStub.getMCPServers(boardId);
+      const servers = await boardStub.getMCPServers(projectId);
       return jsonResponse({ success: true, data: servers });
     } catch (error) {
       return jsonResponse({
@@ -448,7 +449,7 @@ export async function routeBoardRequest(
     }
   }
 
-  // POST /api/boards/:id/mcp-servers - Create MCP server
+  // POST /api/projects/:id/mcp-servers - Create MCP server
   if (subPath === '/mcp-servers' && method === 'POST') {
     const data = await request.json() as {
       name: string;
@@ -461,7 +462,7 @@ export async function routeBoardRequest(
       urlPatterns?: Array<{ pattern: string; type: string; fetchTool: string }>;
     };
     try {
-      const server = await boardStub.createMCPServer(boardId, data);
+      const server = await boardStub.createMCPServer(projectId, data);
       return jsonResponse({ success: true, data: server });
     } catch (error) {
       return jsonResponse({
@@ -471,11 +472,11 @@ export async function routeBoardRequest(
     }
   }
 
-  // POST /api/boards/:id/mcp-servers/account - Create account-based MCP
+  // POST /api/projects/:id/mcp-servers/account - Create account-based MCP
   if (subPath === '/mcp-servers/account' && method === 'POST') {
     const data = await request.json() as { accountId: string; mcpId: string };
     try {
-      const server = await boardStub.createAccountMCP(boardId, data);
+      const server = await boardStub.createAccountMCP(projectId, data);
       return jsonResponse({ success: true, data: server });
     } catch (error) {
       return jsonResponse({
@@ -485,7 +486,7 @@ export async function routeBoardRequest(
     }
   }
 
-  // GET /api/boards/:id/mcp-servers/:serverId - Get MCP server
+  // GET /api/projects/:id/mcp-servers/:serverId - Get MCP server
   const mcpServerMatch = subPath.match(/^\/mcp-servers\/([^/]+)$/);
   if (mcpServerMatch && method === 'GET') {
     const serverId = mcpServerMatch[1];
@@ -500,7 +501,7 @@ export async function routeBoardRequest(
     }
   }
 
-  // PUT /api/boards/:id/mcp-servers/:serverId - Update MCP server
+  // PUT /api/projects/:id/mcp-servers/:serverId - Update MCP server
   if (mcpServerMatch && method === 'PUT') {
     const serverId = mcpServerMatch[1];
     const data = await request.json() as {
@@ -523,7 +524,7 @@ export async function routeBoardRequest(
     }
   }
 
-  // DELETE /api/boards/:id/mcp-servers/:serverId - Delete MCP server
+  // DELETE /api/projects/:id/mcp-servers/:serverId - Delete MCP server
   if (mcpServerMatch && method === 'DELETE') {
     const serverId = mcpServerMatch[1];
     try {
@@ -537,7 +538,7 @@ export async function routeBoardRequest(
     }
   }
 
-  // GET /api/boards/:id/mcp-servers/:serverId/tools - Get MCP server tools
+  // GET /api/projects/:id/mcp-servers/:serverId/tools - Get MCP server tools
   const mcpToolsMatch = subPath.match(/^\/mcp-servers\/([^/]+)\/tools$/);
   if (mcpToolsMatch && method === 'GET') {
     const serverId = mcpToolsMatch[1];
@@ -552,7 +553,7 @@ export async function routeBoardRequest(
     }
   }
 
-  // PUT/POST /api/boards/:id/mcp-servers/:serverId/tools - Cache MCP server tools
+  // PUT/POST /api/projects/:id/mcp-servers/:serverId/tools - Cache MCP server tools
   if (mcpToolsMatch && (method === 'PUT' || method === 'POST')) {
     const serverId = mcpToolsMatch[1];
     const data = await request.json() as {
@@ -574,7 +575,7 @@ export async function routeBoardRequest(
     }
   }
 
-  // POST /api/boards/:id/mcp-servers/:serverId/connect - Connect MCP server
+  // POST /api/projects/:id/mcp-servers/:serverId/connect - Connect MCP server
   const mcpConnectMatch = subPath.match(/^\/mcp-servers\/([^/]+)\/connect$/);
   if (mcpConnectMatch && method === 'POST') {
     const serverId = mcpConnectMatch[1];
@@ -589,7 +590,7 @@ export async function routeBoardRequest(
     }
   }
 
-  // POST /api/boards/:id/mcp-servers/:serverId/oauth/discover - Discover OAuth
+  // POST /api/projects/:id/mcp-servers/:serverId/oauth/discover - Discover OAuth
   const mcpOAuthDiscoverMatch = subPath.match(/^\/mcp-servers\/([^/]+)\/oauth\/discover$/);
   if (mcpOAuthDiscoverMatch && method === 'POST') {
     const serverId = mcpOAuthDiscoverMatch[1];
@@ -604,7 +605,7 @@ export async function routeBoardRequest(
     }
   }
 
-  // GET /api/boards/:id/mcp-servers/:serverId/oauth/url - Get OAuth URL
+  // GET /api/projects/:id/mcp-servers/:serverId/oauth/url - Get OAuth URL
   const mcpOAuthUrlMatch = subPath.match(/^\/mcp-servers\/([^/]+)\/oauth\/url$/);
   if (mcpOAuthUrlMatch && method === 'GET') {
     const serverId = mcpOAuthUrlMatch[1];
@@ -627,7 +628,7 @@ export async function routeBoardRequest(
     }
   }
 
-  // POST /api/boards/:id/mcp-servers/:serverId/oauth/exchange - Exchange OAuth code
+  // POST /api/projects/:id/mcp-servers/:serverId/oauth/exchange - Exchange OAuth code
   const mcpOAuthExchangeMatch = subPath.match(/^\/mcp-servers\/([^/]+)\/oauth\/exchange$/);
   if (mcpOAuthExchangeMatch && method === 'POST') {
     const serverId = mcpOAuthExchangeMatch[1];
@@ -647,10 +648,10 @@ export async function routeBoardRequest(
   // GITHUB ROUTES
   // ============================================
 
-  // GET /api/boards/:id/github/repos - Get GitHub repos
+  // GET /api/projects/:id/github/repos - Get GitHub repos
   if (subPath === '/github/repos' && method === 'GET') {
     try {
-      const repos = await boardStub.getGitHubRepos(boardId);
+      const repos = await boardStub.getGitHubRepos(projectId);
       return jsonResponse({ success: true, data: repos });
     } catch (error) {
       return jsonResponse({
@@ -664,11 +665,11 @@ export async function routeBoardRequest(
   // LINK METADATA ROUTES
   // ============================================
 
-  // POST /api/boards/:id/links/metadata - Get link metadata
+  // POST /api/projects/:id/links/metadata - Get link metadata
   if (subPath === '/links/metadata' && method === 'POST') {
     const data = await request.json() as { url: string };
     try {
-      const metadata = await boardStub.getLinkMetadata(boardId, data);
+      const metadata = await boardStub.getLinkMetadata(projectId, data);
       return jsonResponse({ success: true, data: metadata });
     } catch (error) {
       return jsonResponse({

@@ -1,18 +1,18 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useBoard } from '../../context/BoardContext';
+import { useProject } from '../../context/ProjectContext';
 import { Button, Modal, Input } from '../common';
 import './Home.css';
 
 export function Home() {
   const navigate = useNavigate();
-  const { boards, createBoard, renameBoard, deleteBoard, loading } = useBoard();
+  const { projects, createProject, renameProject, deleteProject, loading } = useProject();
   const [searchQuery, setSearchQuery] = useState('');
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [newBoardName, setNewBoardName] = useState('');
+  const [newProjectName, setNewProjectName] = useState('');
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
-  const [renameModalBoard, setRenameModalBoard] = useState<{ id: string; name: string } | null>(null);
-  const [deleteModalBoard, setDeleteModalBoard] = useState<{ id: string; name: string } | null>(null);
+  const [renameModalProject, setRenameModalProject] = useState<{ id: string; name: string } | null>(null);
+  const [deleteModalProject, setDeleteModalProject] = useState<{ id: string; name: string } | null>(null);
   const [renameName, setRenameName] = useState('');
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -27,48 +27,48 @@ export function Home() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const filteredBoards = boards.filter((board) =>
-    board.name.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredProjects = projects.filter((project) =>
+    project.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const handleCreateBoard = async () => {
-    if (newBoardName.trim()) {
-      const boardId = await createBoard(newBoardName.trim());
-      setNewBoardName('');
+  const handleCreateProject = async () => {
+    if (newProjectName.trim()) {
+      const projectId = await createProject(newProjectName.trim());
+      setNewProjectName('');
       setShowCreateModal(false);
-      if (boardId) {
-        navigate(`/board/${boardId}`);
+      if (projectId) {
+        navigate(`/project/${projectId}`);
       }
     }
   };
 
-  const handleSelectBoard = (boardId: string) => {
-    navigate(`/board/${boardId}`);
+  const handleSelectProject = (projectId: string) => {
+    navigate(`/project/${projectId}`);
   };
 
   const handleRename = async () => {
-    if (renameModalBoard && renameName.trim()) {
-      await renameBoard(renameModalBoard.id, renameName.trim());
-      setRenameModalBoard(null);
+    if (renameModalProject && renameName.trim()) {
+      await renameProject(renameModalProject.id, renameName.trim());
+      setRenameModalProject(null);
       setRenameName('');
     }
   };
 
   const handleDelete = async () => {
-    if (deleteModalBoard) {
-      await deleteBoard(deleteModalBoard.id);
-      setDeleteModalBoard(null);
+    if (deleteModalProject) {
+      await deleteProject(deleteModalProject.id);
+      setDeleteModalProject(null);
     }
   };
 
-  const openRenameModal = (board: { id: string; name: string }) => {
-    setRenameName(board.name);
-    setRenameModalBoard(board);
+  const openRenameModal = (project: { id: string; name: string }) => {
+    setRenameName(project.name);
+    setRenameModalProject(project);
     setMenuOpenId(null);
   };
 
-  const openDeleteModal = (board: { id: string; name: string }) => {
-    setDeleteModalBoard(board);
+  const openDeleteModal = (project: { id: string; name: string }) => {
+    setDeleteModalProject(project);
     setMenuOpenId(null);
   };
 
@@ -76,63 +76,63 @@ export function Home() {
     <div className="home">
       <div className="home-container">
         <div className="home-header">
-          <h1 className="home-title">&gt; Boards</h1>
+          <h1 className="home-title">&gt; Projects</h1>
           <Button variant="primary" onClick={() => setShowCreateModal(true)}>
-            + New Board
+            + New Project
           </Button>
         </div>
 
         <div className="home-search">
           <Input
-            placeholder="Search boards..."
+            placeholder="Search projects..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
 
         {loading ? (
-          <div className="home-loading">Loading boards...</div>
-        ) : filteredBoards.length === 0 ? (
+          <div className="home-loading">Loading projects...</div>
+        ) : filteredProjects.length === 0 ? (
           <div className="home-empty">
             {searchQuery ? (
-              <p>No boards matching "{searchQuery}"</p>
+              <p>No projects matching "{searchQuery}"</p>
             ) : (
               <>
-                <p>No boards yet</p>
+                <p>No projects yet</p>
                 <Button variant="ghost" onClick={() => setShowCreateModal(true)}>
-                  Create your first board
+                  Create your first project
                 </Button>
               </>
             )}
           </div>
         ) : (
           <div className="home-boards">
-            {filteredBoards.map((board) => (
+            {filteredProjects.map((project) => (
               <div
-                key={board.id}
+                key={project.id}
                 className="board-card"
-                onClick={() => handleSelectBoard(board.id)}
-                ref={menuOpenId === board.id ? menuRef : null}
+                onClick={() => handleSelectProject(project.id)}
+                ref={menuOpenId === project.id ? menuRef : null}
               >
-                <span className="board-card-name">{board.name}</span>
+                <span className="board-card-name">{project.name}</span>
                 <div className="board-card-right">
                   <span className="board-card-meta">
-                    {new Date(board.createdAt).toLocaleDateString()}
+                    {new Date(project.createdAt).toLocaleDateString()}
                   </span>
                   <button
                     className="board-card-menu-trigger"
                     onClick={(e) => {
                       e.stopPropagation();
-                      setMenuOpenId(menuOpenId === board.id ? null : board.id);
+                      setMenuOpenId(menuOpenId === project.id ? null : project.id);
                     }}
                   >
                     ⋯
                   </button>
                 </div>
-                {menuOpenId === board.id && (
+                {menuOpenId === project.id && (
                   <div className="board-card-dropdown">
-                    <button onClick={(e) => { e.stopPropagation(); openRenameModal(board); }}>Rename</button>
-                    <button className="danger" onClick={(e) => { e.stopPropagation(); openDeleteModal(board); }}>Delete</button>
+                    <button onClick={(e) => { e.stopPropagation(); openRenameModal(project); }}>Rename</button>
+                    <button className="danger" onClick={(e) => { e.stopPropagation(); openDeleteModal(project); }}>Delete</button>
                   </div>
                 )}
               </div>
@@ -144,21 +144,21 @@ export function Home() {
       <Modal
         isOpen={showCreateModal}
         onClose={() => setShowCreateModal(false)}
-        title="Create New Board"
+        title="Create New Project"
         width="sm"
       >
         <form
           onSubmit={(e) => {
             e.preventDefault();
-            handleCreateBoard();
+            handleCreateProject();
           }}
         >
           <div className="modal-form">
             <Input
-              label="Board Name"
+              label="Project Name"
               placeholder="My Project"
-              value={newBoardName}
-              onChange={(e) => setNewBoardName(e.target.value)}
+              value={newProjectName}
+              onChange={(e) => setNewProjectName(e.target.value)}
               autoFocus
             />
             <div className="modal-actions">
@@ -170,7 +170,7 @@ export function Home() {
                 Cancel
               </Button>
               <Button type="submit" variant="primary">
-                Create Board
+                Create Project
               </Button>
             </div>
           </div>
@@ -179,9 +179,9 @@ export function Home() {
 
       {/* Rename Modal */}
       <Modal
-        isOpen={!!renameModalBoard}
-        onClose={() => setRenameModalBoard(null)}
-        title="Rename Board"
+        isOpen={!!renameModalProject}
+        onClose={() => setRenameModalProject(null)}
+        title="Rename Project"
         width="sm"
       >
         <form
@@ -192,7 +192,7 @@ export function Home() {
         >
           <div className="modal-form">
             <Input
-              label="Board Name"
+              label="Project Name"
               value={renameName}
               onChange={(e) => setRenameName(e.target.value)}
               autoFocus
@@ -201,7 +201,7 @@ export function Home() {
               <Button
                 type="button"
                 variant="ghost"
-                onClick={() => setRenameModalBoard(null)}
+                onClick={() => setRenameModalProject(null)}
               >
                 Cancel
               </Button>
@@ -215,20 +215,20 @@ export function Home() {
 
       {/* Delete Confirmation Modal */}
       <Modal
-        isOpen={!!deleteModalBoard}
-        onClose={() => setDeleteModalBoard(null)}
-        title="Delete Board"
+        isOpen={!!deleteModalProject}
+        onClose={() => setDeleteModalProject(null)}
+        title="Delete Project"
         width="sm"
       >
         <div className="modal-form">
           <p className="delete-warning">
-            Are you sure you want to delete "{deleteModalBoard?.name}"? This action cannot be undone.
+            Are you sure you want to delete "{deleteModalProject?.name}"? This action cannot be undone.
           </p>
           <div className="modal-actions">
             <Button
               type="button"
               variant="ghost"
-              onClick={() => setDeleteModalBoard(null)}
+              onClick={() => setDeleteModalProject(null)}
             >
               Cancel
             </Button>

@@ -1,15 +1,16 @@
 import type {
-  Board,
+  Project,
   Column,
   Task,
   ApiResponse,
   TaskPriority,
-  BoardCredential,
+  ProjectCredential,
   MCPServer,
   MCPTool,
   WorkflowPlan,
   WorkflowLog,
   User,
+  Agent,
   RoadmapItem,
   RoadmapColumn,
   ItemSize,
@@ -59,72 +60,90 @@ async function request<T>(
 }
 
 // ============================================
-// BOARDS
+// PROJECTS
 // ============================================
 
-export interface BoardWithDetails extends Board {
+export interface ProjectWithDetails extends Project {
   columns: Column[];
   tasks: Task[];
 }
 
-export async function getBoards(): Promise<ApiResponse<Board[]>> {
-  return request<Board[]>('/boards');
+/** @deprecated Use getProjects instead */
+export const getBoards = getProjects;
+
+export async function getProjects(): Promise<ApiResponse<Project[]>> {
+  return request<Project[]>('/projects');
 }
 
-export async function getBoard(id: string): Promise<ApiResponse<BoardWithDetails>> {
-  return request<BoardWithDetails>(`/boards/${id}`);
+/** @deprecated Use getProject instead */
+export const getBoard = getProject;
+
+export async function getProject(id: string): Promise<ApiResponse<ProjectWithDetails>> {
+  return request<ProjectWithDetails>(`/projects/${id}`);
 }
 
-export async function createBoard(name: string): Promise<ApiResponse<BoardWithDetails>> {
-  return request<BoardWithDetails>('/boards', {
+/** @deprecated Use createProject instead */
+export const createBoard = createProject;
+
+export async function createProject(name: string): Promise<ApiResponse<ProjectWithDetails>> {
+  return request<ProjectWithDetails>('/projects', {
     method: 'POST',
     body: JSON.stringify({ name }),
   });
 }
 
-export async function updateBoard(
+/** @deprecated Use updateProject instead */
+export const updateBoard = updateProject;
+
+export async function updateProject(
   id: string,
   data: { name?: string }
-): Promise<ApiResponse<BoardWithDetails>> {
-  return request<BoardWithDetails>(`/boards/${id}`, {
+): Promise<ApiResponse<ProjectWithDetails>> {
+  return request<ProjectWithDetails>(`/projects/${id}`, {
     method: 'PUT',
     body: JSON.stringify(data),
   });
 }
 
-export async function deleteBoard(id: string): Promise<ApiResponse<void>> {
-  return request<void>(`/boards/${id}`, {
+/** @deprecated Use deleteProject instead */
+export const deleteBoard = deleteProject;
+
+export async function deleteProject(id: string): Promise<ApiResponse<void>> {
+  return request<void>(`/projects/${id}`, {
     method: 'DELETE',
   });
 }
+
+/** @deprecated Use ProjectWithDetails instead */
+export type BoardWithDetails = ProjectWithDetails;
 
 // ============================================
 // COLUMNS
 // ============================================
 
 export async function createColumn(
-  boardId: string,
+  projectId: string,
   name: string
 ): Promise<ApiResponse<Column>> {
-  return request<Column>(`/boards/${boardId}/columns`, {
+  return request<Column>(`/projects/${projectId}/columns`, {
     method: 'POST',
     body: JSON.stringify({ name }),
   });
 }
 
 export async function updateColumn(
-  boardId: string,
+  projectId: string,
   id: string,
   data: { name?: string; position?: number }
 ): Promise<ApiResponse<Column>> {
-  return request<Column>(`/boards/${boardId}/columns/${id}`, {
+  return request<Column>(`/projects/${projectId}/columns/${id}`, {
     method: 'PUT',
     body: JSON.stringify(data),
   });
 }
 
-export async function deleteColumn(boardId: string, id: string): Promise<ApiResponse<void>> {
-  return request<void>(`/boards/${boardId}/columns/${id}`, {
+export async function deleteColumn(projectId: string, id: string): Promise<ApiResponse<void>> {
+  return request<void>(`/projects/${projectId}/columns/${id}`, {
     method: 'DELETE',
   });
 }
@@ -134,26 +153,26 @@ export async function deleteColumn(boardId: string, id: string): Promise<ApiResp
 // ============================================
 
 export async function createTask(
-  boardId: string,
+  projectId: string,
   data: {
-    columnId: string;
+    columnId?: string;
     title: string;
     description?: string;
     priority?: TaskPriority;
   }
 ): Promise<ApiResponse<Task>> {
-  return request<Task>(`/boards/${boardId}/tasks`, {
+  return request<Task>(`/projects/${projectId}/tasks`, {
     method: 'POST',
     body: JSON.stringify(data),
   });
 }
 
-export async function getTask(boardId: string, id: string): Promise<ApiResponse<Task>> {
-  return request<Task>(`/boards/${boardId}/tasks/${id}`);
+export async function getTask(projectId: string, id: string): Promise<ApiResponse<Task>> {
+  return request<Task>(`/projects/${projectId}/tasks/${id}`);
 }
 
 export async function updateTask(
-  boardId: string,
+  projectId: string,
   id: string,
   data: {
     title?: string;
@@ -161,28 +180,190 @@ export async function updateTask(
     priority?: TaskPriority;
   }
 ): Promise<ApiResponse<Task>> {
-  return request<Task>(`/boards/${boardId}/tasks/${id}`, {
+  return request<Task>(`/projects/${projectId}/tasks/${id}`, {
     method: 'PUT',
     body: JSON.stringify(data),
   });
 }
 
-export async function deleteTask(boardId: string, id: string): Promise<ApiResponse<void>> {
-  return request<void>(`/boards/${boardId}/tasks/${id}`, {
+export async function deleteTask(projectId: string, id: string): Promise<ApiResponse<void>> {
+  return request<void>(`/projects/${projectId}/tasks/${id}`, {
     method: 'DELETE',
   });
 }
 
 export async function moveTask(
-  boardId: string,
+  projectId: string,
   id: string,
   columnId: string,
   position: number
 ): Promise<ApiResponse<Task>> {
-  return request<Task>(`/boards/${boardId}/tasks/${id}/move`, {
+  return request<Task>(`/projects/${projectId}/tasks/${id}/move`, {
     method: 'POST',
     body: JSON.stringify({ columnId, position }),
   });
+}
+
+// ============================================
+// STANDALONE TASKS (user's personal tasks)
+// ============================================
+
+export async function getStandaloneTasks(): Promise<ApiResponse<Task[]>> {
+  return request<Task[]>('/tasks');
+}
+
+export async function createStandaloneTask(data: {
+  title: string;
+  description?: string;
+  priority?: TaskPriority;
+}): Promise<ApiResponse<Task>> {
+  return request<Task>('/tasks', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function getStandaloneTask(id: string): Promise<ApiResponse<Task>> {
+  return request<Task>(`/tasks/${id}`);
+}
+
+export async function updateStandaloneTask(
+  id: string,
+  data: {
+    title?: string;
+    description?: string;
+    priority?: TaskPriority;
+  }
+): Promise<ApiResponse<Task>> {
+  return request<Task>(`/tasks/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteStandaloneTask(id: string): Promise<ApiResponse<void>> {
+  return request<void>(`/tasks/${id}`, {
+    method: 'DELETE',
+  });
+}
+
+// ============================================
+// AGENTS (Custom AI agents)
+// ============================================
+
+export async function getAgents(projectId?: string): Promise<ApiResponse<Agent[]>> {
+  const query = projectId ? `?projectId=${encodeURIComponent(projectId)}` : '';
+  return request<Agent[]>(`/agents${query}`);
+}
+
+export async function getAgent(id: string, projectId?: string): Promise<ApiResponse<Agent>> {
+  const query = projectId ? `?projectId=${encodeURIComponent(projectId)}` : '';
+  return request<Agent>(`/agents/${id}${query}`);
+}
+
+export async function createAgent(data: {
+  projectId?: string;
+  name: string;
+  description?: string;
+  systemPrompt: string;
+  model?: string;
+  icon?: string;
+}): Promise<ApiResponse<Agent>> {
+  return request<Agent>('/agents', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateAgent(
+  id: string,
+  data: {
+    name?: string;
+    description?: string;
+    systemPrompt?: string;
+    model?: string;
+    icon?: string;
+    enabled?: boolean;
+  },
+  projectId?: string
+): Promise<ApiResponse<Agent>> {
+  const query = projectId ? `?projectId=${encodeURIComponent(projectId)}` : '';
+  return request<Agent>(`/agents/${id}${query}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteAgent(id: string, projectId?: string): Promise<ApiResponse<void>> {
+  const query = projectId ? `?projectId=${encodeURIComponent(projectId)}` : '';
+  return request<void>(`/agents/${id}${query}`, {
+    method: 'DELETE',
+  });
+}
+
+// ============================================
+// GLOBAL MCP SERVERS (User-level MCPs)
+// ============================================
+
+export async function getGlobalMCPServers(): Promise<ApiResponse<MCPServer[]>> {
+  return request<MCPServer[]>('/mcp-servers');
+}
+
+export async function getGlobalMCPServer(serverId: string): Promise<ApiResponse<MCPServer>> {
+  return request<MCPServer>(`/mcp-servers/${serverId}`);
+}
+
+export async function createGlobalMCPServer(data: {
+  name: string;
+  type: 'remote' | 'hosted';
+  endpoint?: string;
+  authType?: 'none' | 'oauth' | 'api_key' | 'bearer';
+  credentialId?: string;
+  transportType?: 'streamable-http' | 'sse';
+}): Promise<ApiResponse<MCPServer>> {
+  return request<MCPServer>('/mcp-servers', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateGlobalMCPServer(
+  serverId: string,
+  data: {
+    name?: string;
+    endpoint?: string;
+    authType?: 'none' | 'oauth' | 'api_key' | 'bearer';
+    credentialId?: string;
+    transportType?: 'streamable-http' | 'sse';
+    enabled?: boolean;
+    status?: 'connected' | 'disconnected' | 'error';
+  }
+): Promise<ApiResponse<MCPServer>> {
+  return request<MCPServer>(`/mcp-servers/${serverId}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteGlobalMCPServer(serverId: string): Promise<ApiResponse<void>> {
+  return request<void>(`/mcp-servers/${serverId}`, {
+    method: 'DELETE',
+  });
+}
+
+export async function getGlobalMCPServerTools(serverId: string): Promise<ApiResponse<MCPTool[]>> {
+  return request<MCPTool[]>(`/mcp-servers/${serverId}/tools`);
+}
+
+export async function connectGlobalMCPServer(serverId: string): Promise<ApiResponse<{
+  status: string;
+  toolCount: number;
+  tools: Array<{ name: string; description?: string }>;
+}>> {
+  return request<{ status: string; toolCount: number; tools: Array<{ name: string; description?: string }> }>(
+    `/mcp-servers/${serverId}/connect`,
+    { method: 'POST' }
+  );
 }
 
 // ============================================
@@ -190,31 +371,31 @@ export async function moveTask(
 // ============================================
 
 export async function getCredentials(
-  boardId: string
-): Promise<ApiResponse<BoardCredential[]>> {
-  return request<BoardCredential[]>(`/boards/${boardId}/credentials`);
+  projectId: string
+): Promise<ApiResponse<ProjectCredential[]>> {
+  return request<ProjectCredential[]>(`/projects/${projectId}/credentials`);
 }
 
 export async function createCredential(
-  boardId: string,
+  projectId: string,
   data: {
     type: 'github_oauth' | 'google_oauth' | 'anthropic_api_key';
     name: string;
     value: string;
     metadata?: Record<string, unknown>;
   }
-): Promise<ApiResponse<BoardCredential>> {
-  return request<BoardCredential>(`/boards/${boardId}/credentials`, {
+): Promise<ApiResponse<ProjectCredential>> {
+  return request<ProjectCredential>(`/projects/${projectId}/credentials`, {
     method: 'POST',
     body: JSON.stringify(data),
   });
 }
 
 export async function deleteCredential(
-  boardId: string,
+  projectId: string,
   credentialId: string
 ): Promise<ApiResponse<void>> {
-  return request<void>(`/boards/${boardId}/credentials/${credentialId}`, {
+  return request<void>(`/projects/${projectId}/credentials/${credentialId}`, {
     method: 'DELETE',
   });
 }
@@ -234,15 +415,15 @@ export interface GitHubRepo {
 }
 
 export async function getGitHubOAuthUrl(
-  boardId: string
+  projectId: string
 ): Promise<ApiResponse<{ url: string }>> {
-  return request<{ url: string }>(`/github/oauth/url?boardId=${encodeURIComponent(boardId)}`);
+  return request<{ url: string }>(`/github/oauth/url?projectId=${encodeURIComponent(projectId)}`);
 }
 
 export async function getGitHubRepos(
-  boardId: string
+  projectId: string
 ): Promise<ApiResponse<GitHubRepo[]>> {
-  return request<GitHubRepo[]>(`/boards/${boardId}/github/repos`);
+  return request<GitHubRepo[]>(`/projects/${projectId}/github/repos`);
 }
 
 // ============================================
@@ -250,9 +431,9 @@ export async function getGitHubRepos(
 // ============================================
 
 export async function getGoogleOAuthUrl(
-  boardId: string
+  projectId: string
 ): Promise<ApiResponse<{ url: string }>> {
-  return request<{ url: string }>(`/google/oauth/url?boardId=${encodeURIComponent(boardId)}`);
+  return request<{ url: string }>(`/google/oauth/url?projectId=${encodeURIComponent(projectId)}`);
 }
 
 // ============================================
@@ -260,20 +441,20 @@ export async function getGoogleOAuthUrl(
 // ============================================
 
 export async function getMCPServers(
-  boardId: string
+  projectId: string
 ): Promise<ApiResponse<MCPServer[]>> {
-  return request<MCPServer[]>(`/boards/${boardId}/mcp-servers`);
+  return request<MCPServer[]>(`/projects/${projectId}/mcp-servers`);
 }
 
 export async function getMCPServer(
-  boardId: string,
+  projectId: string,
   serverId: string
 ): Promise<ApiResponse<MCPServer>> {
-  return request<MCPServer>(`/boards/${boardId}/mcp-servers/${serverId}`);
+  return request<MCPServer>(`/projects/${projectId}/mcp-servers/${serverId}`);
 }
 
 export async function createMCPServer(
-  boardId: string,
+  projectId: string,
   data: {
     name: string;
     type: 'remote' | 'hosted';
@@ -283,14 +464,14 @@ export async function createMCPServer(
     transportType?: 'streamable-http' | 'sse';
   }
 ): Promise<ApiResponse<MCPServer>> {
-  return request<MCPServer>(`/boards/${boardId}/mcp-servers`, {
+  return request<MCPServer>(`/projects/${projectId}/mcp-servers`, {
     method: 'POST',
     body: JSON.stringify(data),
   });
 }
 
 export async function updateMCPServer(
-  boardId: string,
+  projectId: string,
   serverId: string,
   data: {
     name?: string;
@@ -302,40 +483,40 @@ export async function updateMCPServer(
     status?: 'connected' | 'disconnected' | 'error';
   }
 ): Promise<ApiResponse<MCPServer>> {
-  return request<MCPServer>(`/boards/${boardId}/mcp-servers/${serverId}`, {
+  return request<MCPServer>(`/projects/${projectId}/mcp-servers/${serverId}`, {
     method: 'PUT',
     body: JSON.stringify(data),
   });
 }
 
 export async function deleteMCPServer(
-  boardId: string,
+  projectId: string,
   serverId: string
 ): Promise<ApiResponse<void>> {
-  return request<void>(`/boards/${boardId}/mcp-servers/${serverId}`, {
+  return request<void>(`/projects/${projectId}/mcp-servers/${serverId}`, {
     method: 'DELETE',
   });
 }
 
 export async function getMCPServerTools(
-  boardId: string,
+  projectId: string,
   serverId: string
 ): Promise<ApiResponse<MCPTool[]>> {
-  return request<MCPTool[]>(`/boards/${boardId}/mcp-servers/${serverId}/tools`);
+  return request<MCPTool[]>(`/projects/${projectId}/mcp-servers/${serverId}/tools`);
 }
 
 export async function connectMCPServer(
-  boardId: string,
+  projectId: string,
   serverId: string
 ): Promise<ApiResponse<{ status: string; toolCount: number; tools: Array<{ name: string; description?: string }> }>> {
   return request<{ status: string; toolCount: number; tools: Array<{ name: string; description?: string }> }>(
-    `/boards/${boardId}/mcp-servers/${serverId}/connect`,
+    `/projects/${projectId}/mcp-servers/${serverId}/connect`,
     { method: 'POST' }
   );
 }
 
 export async function cacheMCPServerTools(
-  boardId: string,
+  projectId: string,
   serverId: string,
   tools: Array<{
     name: string;
@@ -343,7 +524,7 @@ export async function cacheMCPServerTools(
     inputSchema: object;
   }>
 ): Promise<ApiResponse<MCPTool[]>> {
-  return request<MCPTool[]>(`/boards/${boardId}/mcp-servers/${serverId}/tools`, {
+  return request<MCPTool[]>(`/projects/${projectId}/mcp-servers/${serverId}/tools`, {
     method: 'PUT',
     body: JSON.stringify({ tools }),
   });
@@ -354,11 +535,11 @@ export async function cacheMCPServerTools(
  * Uses the AccountMCPRegistry to create and initialize the MCP
  */
 export async function createAccountMCP(
-  boardId: string,
+  projectId: string,
   accountId: string,
   mcpId: string
 ): Promise<ApiResponse<MCPServer>> {
-  return request<MCPServer>(`/boards/${boardId}/mcp-servers/account`, {
+  return request<MCPServer>(`/projects/${projectId}/mcp-servers/account`, {
     method: 'POST',
     body: JSON.stringify({ accountId, mcpId }),
   });
@@ -372,7 +553,7 @@ export async function createAccountMCP(
  * Discover OAuth endpoints for a remote MCP server
  */
 export async function discoverMCPOAuth(
-  boardId: string,
+  projectId: string,
   serverId: string
 ): Promise<ApiResponse<{
   resource: string;
@@ -381,7 +562,7 @@ export async function discoverMCPOAuth(
   tokenEndpoint: string;
   scopesSupported?: string[];
 }>> {
-  return request(`/boards/${boardId}/mcp-servers/${serverId}/oauth/discover`, {
+  return request(`/projects/${projectId}/mcp-servers/${serverId}/oauth/discover`, {
     method: 'POST',
   });
 }
@@ -390,25 +571,25 @@ export async function discoverMCPOAuth(
  * Get OAuth authorization URL for a remote MCP server
  */
 export async function getMCPOAuthUrl(
-  boardId: string,
+  projectId: string,
   serverId: string,
   redirectUri: string
 ): Promise<ApiResponse<{ url: string; state: string }>> {
   const params = new URLSearchParams({ redirectUri });
-  return request(`/boards/${boardId}/mcp-servers/${serverId}/oauth/url?${params.toString()}`);
+  return request(`/projects/${projectId}/mcp-servers/${serverId}/oauth/url?${params.toString()}`);
 }
 
 /**
  * Exchange OAuth authorization code for tokens
  */
 export async function exchangeMCPOAuthCode(
-  boardId: string,
+  projectId: string,
   serverId: string,
   code: string,
   state: string,
   redirectUri: string
 ): Promise<ApiResponse<{ status: string; credentialId: string }>> {
-  return request(`/boards/${boardId}/mcp-servers/${serverId}/oauth/exchange`, {
+  return request(`/projects/${projectId}/mcp-servers/${serverId}/oauth/exchange`, {
     method: 'POST',
     body: JSON.stringify({ code, state, redirectUri }),
   });
@@ -418,21 +599,24 @@ export async function exchangeMCPOAuthCode(
 // WORKFLOW PLANS
 // ============================================
 
-export async function getBoardWorkflowPlans(
-  boardId: string
+/** @deprecated Use getProjectWorkflowPlans instead */
+export const getBoardWorkflowPlans = getProjectWorkflowPlans;
+
+export async function getProjectWorkflowPlans(
+  projectId: string
 ): Promise<ApiResponse<WorkflowPlan[]>> {
-  return request<WorkflowPlan[]>(`/boards/${boardId}/workflow-plans`);
+  return request<WorkflowPlan[]>(`/projects/${projectId}/workflow-plans`);
 }
 
 export async function getTaskWorkflowPlan(
-  boardId: string,
+  projectId: string,
   taskId: string
 ): Promise<ApiResponse<WorkflowPlan | null>> {
-  return request<WorkflowPlan | null>(`/boards/${boardId}/tasks/${taskId}/plan`);
+  return request<WorkflowPlan | null>(`/projects/${projectId}/tasks/${taskId}/plan`);
 }
 
 export async function createWorkflowPlan(
-  boardId: string,
+  projectId: string,
   taskId: string,
   data: {
     summary?: string;
@@ -440,21 +624,21 @@ export async function createWorkflowPlan(
     steps?: object[];
   }
 ): Promise<ApiResponse<WorkflowPlan>> {
-  return request<WorkflowPlan>(`/boards/${boardId}/tasks/${taskId}/plan`, {
+  return request<WorkflowPlan>(`/projects/${projectId}/tasks/${taskId}/plan`, {
     method: 'POST',
     body: JSON.stringify(data),
   });
 }
 
 export async function getWorkflowPlan(
-  boardId: string,
+  projectId: string,
   planId: string
 ): Promise<ApiResponse<WorkflowPlan>> {
-  return request<WorkflowPlan>(`/boards/${boardId}/plans/${planId}`);
+  return request<WorkflowPlan>(`/projects/${projectId}/plans/${planId}`);
 }
 
 export async function updateWorkflowPlan(
-  boardId: string,
+  projectId: string,
   planId: string,
   data: {
     status?: string;
@@ -465,41 +649,41 @@ export async function updateWorkflowPlan(
     checkpointData?: object;
   }
 ): Promise<ApiResponse<WorkflowPlan>> {
-  return request<WorkflowPlan>(`/boards/${boardId}/plans/${planId}`, {
+  return request<WorkflowPlan>(`/projects/${projectId}/plans/${planId}`, {
     method: 'PUT',
     body: JSON.stringify(data),
   });
 }
 
 export async function deleteWorkflowPlan(
-  boardId: string,
+  projectId: string,
   planId: string
 ): Promise<ApiResponse<void>> {
-  return request<void>(`/boards/${boardId}/plans/${planId}`, {
+  return request<void>(`/projects/${projectId}/plans/${planId}`, {
     method: 'DELETE',
   });
 }
 
 export async function approveWorkflowPlan(
-  boardId: string,
+  projectId: string,
   planId: string
 ): Promise<ApiResponse<WorkflowPlan>> {
-  return request<WorkflowPlan>(`/boards/${boardId}/plans/${planId}/approve`, {
+  return request<WorkflowPlan>(`/projects/${projectId}/plans/${planId}/approve`, {
     method: 'POST',
   });
 }
 
 export async function cancelWorkflow(
-  boardId: string,
+  projectId: string,
   planId: string
 ): Promise<ApiResponse<WorkflowPlan>> {
-  return request<WorkflowPlan>(`/boards/${boardId}/plans/${planId}/cancel`, {
+  return request<WorkflowPlan>(`/projects/${projectId}/plans/${planId}/cancel`, {
     method: 'POST',
   });
 }
 
 export async function resolveWorkflowCheckpoint(
-  boardId: string,
+  projectId: string,
   planId: string,
   data: {
     action: 'approve' | 'request_changes' | 'cancel';
@@ -507,14 +691,14 @@ export async function resolveWorkflowCheckpoint(
     feedback?: string;
   }
 ): Promise<ApiResponse<WorkflowPlan>> {
-  return request<WorkflowPlan>(`/boards/${boardId}/plans/${planId}/checkpoint`, {
+  return request<WorkflowPlan>(`/projects/${projectId}/plans/${planId}/checkpoint`, {
     method: 'POST',
     body: JSON.stringify(data),
   });
 }
 
 export async function getWorkflowLogs(
-  boardId: string,
+  projectId: string,
   planId: string,
   options?: { limit?: number; offset?: number }
 ): Promise<ApiResponse<WorkflowLog[]>> {
@@ -522,16 +706,90 @@ export async function getWorkflowLogs(
   if (options?.limit) params.set('limit', String(options.limit));
   if (options?.offset) params.set('offset', String(options.offset));
   const query = params.toString() ? `?${params.toString()}` : '';
-  return request<WorkflowLog[]>(`/boards/${boardId}/plans/${planId}/logs${query}`);
+  return request<WorkflowLog[]>(`/projects/${projectId}/plans/${planId}/logs${query}`);
 }
 
 export async function generateWorkflowPlan(
-  boardId: string,
-  taskId: string
+  projectId: string,
+  taskId: string,
+  agentId?: string
 ): Promise<ApiResponse<WorkflowPlan>> {
-  return request<WorkflowPlan>(`/boards/${boardId}/tasks/${taskId}/generate-plan`, {
+  return request<WorkflowPlan>(`/projects/${projectId}/tasks/${taskId}/generate-plan`, {
+    method: 'POST',
+    body: JSON.stringify({ agentId }),
+  });
+}
+
+// ============================================
+// STANDALONE TASK WORKFLOW
+// ============================================
+
+export async function getStandaloneTaskWorkflowPlan(
+  taskId: string
+): Promise<ApiResponse<WorkflowPlan | null>> {
+  return request<WorkflowPlan | null>(`/tasks/${taskId}/plan`);
+}
+
+export async function generateStandaloneWorkflowPlan(
+  taskId: string,
+  agentId?: string
+): Promise<ApiResponse<WorkflowPlan>> {
+  return request<WorkflowPlan>(`/tasks/${taskId}/generate-plan`, {
+    method: 'POST',
+    body: JSON.stringify({ agentId }),
+  });
+}
+
+export async function getStandaloneWorkflowPlan(
+  taskId: string,
+  planId: string
+): Promise<ApiResponse<WorkflowPlan>> {
+  return request<WorkflowPlan>(`/tasks/${taskId}/plans/${planId}`);
+}
+
+export async function deleteStandaloneWorkflowPlan(
+  taskId: string,
+  planId: string
+): Promise<ApiResponse<void>> {
+  return request<void>(`/tasks/${taskId}/plans/${planId}`, {
+    method: 'DELETE',
+  });
+}
+
+export async function cancelStandaloneWorkflow(
+  taskId: string,
+  planId: string
+): Promise<ApiResponse<WorkflowPlan>> {
+  return request<WorkflowPlan>(`/tasks/${taskId}/plans/${planId}/cancel`, {
     method: 'POST',
   });
+}
+
+export async function resolveStandaloneWorkflowCheckpoint(
+  taskId: string,
+  planId: string,
+  data: {
+    action: 'approve' | 'request_changes' | 'cancel';
+    data?: object;
+    feedback?: string;
+  }
+): Promise<ApiResponse<WorkflowPlan>> {
+  return request<WorkflowPlan>(`/tasks/${taskId}/plans/${planId}/checkpoint`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function getStandaloneWorkflowLogs(
+  taskId: string,
+  planId: string,
+  options?: { limit?: number; offset?: number }
+): Promise<ApiResponse<WorkflowLog[]>> {
+  const params = new URLSearchParams();
+  if (options?.limit) params.set('limit', options.limit.toString());
+  if (options?.offset) params.set('offset', options.offset.toString());
+  const query = params.toString() ? `?${params.toString()}` : '';
+  return request<WorkflowLog[]>(`/tasks/${taskId}/plans/${planId}/logs${query}`);
 }
 
 // ============================================
@@ -545,10 +803,10 @@ export interface LinkMetadata {
 }
 
 export async function getLinkMetadata(
-  boardId: string,
+  projectId: string,
   url: string
 ): Promise<ApiResponse<LinkMetadata | null>> {
-  return request<LinkMetadata | null>(`/boards/${boardId}/links/metadata`, {
+  return request<LinkMetadata | null>(`/projects/${projectId}/links/metadata`, {
     method: 'POST',
     body: JSON.stringify({ url }),
   });

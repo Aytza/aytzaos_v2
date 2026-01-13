@@ -1,14 +1,15 @@
 import { jsonResponse } from '../utils/response';
 import { logger } from '../utils/logger';
 import { CREDENTIAL_TYPES } from '../constants';
-import { transformBoard, transformColumn, transformTask, toCamelCase } from '../utils/transformations';
+import { transformProject, transformColumn, transformTask, transformAgent, toCamelCase } from '../utils/transformations';
 import { getCredentialTypeForUrlPattern, type UrlPatternType } from '../mcp/AccountMCPRegistry';
 import type { CredentialService } from './CredentialService';
 
 interface TaskRow {
   id: string;
-  column_id: string;
-  board_id: string;
+  column_id: string | null;
+  project_id: string | null;
+  user_id: string | null;
   title: string;
   description: string | null;
   priority: string;
@@ -34,107 +35,135 @@ export class BoardService {
   }
 
   // ============================================
-  // BOARD OPERATIONS
+  // PROJECT OPERATIONS
   // ============================================
 
   /**
-   * Initialize a new board in this Durable Object
+   * Initialize a new project in this Durable Object
+   * @param isUserTasksContainer - If true, skip creating default columns (for standalone tasks)
    */
-  initBoard(data: { id: string; name: string; ownerId: string }): Response {
+  initProject(data: { id: string; name: string; ownerId: string; isUserTasksContainer?: boolean }): Response {
     const now = new Date().toISOString();
 
-    const existing = this.sql.exec('SELECT id FROM boards WHERE id = ?', data.id).toArray()[0];
+    const existing = this.sql.exec('SELECT id FROM projects WHERE id = ?', data.id).toArray()[0];
     if (existing) {
-      return jsonResponse({ success: false, error: 'Board already initialized' }, 400);
+      return jsonResponse({ success: false, error: 'Project already initialized' }, 400);
     }
 
     this.sql.exec(
-      'INSERT INTO boards (id, name, owner_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?)',
+      'INSERT INTO projects (id, name, owner_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?)',
       data.id, data.name, data.ownerId, now, now
     );
 
-    // Create default columns
-    const defaultColumns = ['Backlog', 'Doing', 'Done'];
-    defaultColumns.forEach((name, position) => {
-      const columnId = this.generateId();
-      this.sql.exec(
-        'INSERT INTO columns (id, board_id, name, position) VALUES (?, ?, ?, ?)',
-        columnId, data.id, name, position
-      );
-    });
+    // Create default columns (skip for user tasks container)
+    if (!data.isUserTasksContainer) {
+      const defaultColumns = ['Backlog', 'Doing', 'Done'];
+      defaultColumns.forEach((name, position) => {
+        const columnId = this.generateId();
+        this.sql.exec(
+          'INSERT INTO columns (id, project_id, name, position) VALUES (?, ?, ?, ?)',
+          columnId, data.id, name, position
+        );
+      });
+    }
 
-    return this.getBoard(data.id);
+    return this.getProject(data.id);
+  }
+
+  // Alias for backward compatibility
+  initBoard(data: { id: string; name: string; ownerId: string; isUserTasksContainer?: boolean }): Response {
+    return this.initProject(data);
   }
 
   /**
-   * Get basic board info for access verification
+   * Get basic project info for access verification
    */
-  getBoardInfo(): Response {
-    const board = this.sql.exec('SELECT id, name, owner_id FROM boards').toArray()[0];
-    if (!board) {
-      return jsonResponse({ success: false, error: 'Board not initialized' }, 404);
+  getProjectInfo(): Response {
+    const project = this.sql.exec('SELECT id, name, owner_id FROM projects').toArray()[0];
+    if (!project) {
+      return jsonResponse({ success: false, error: 'Project not initialized' }, 404);
     }
 
-    const boardRecord = board as { id: string; name: string; owner_id: string };
+    const projectRecord = project as { id: string; name: string; owner_id: string };
     return jsonResponse({
       success: true,
       data: {
-        id: boardRecord.id,
-        name: boardRecord.name,
-        ownerId: boardRecord.owner_id,
+        id: projectRecord.id,
+        name: projectRecord.name,
+        ownerId: projectRecord.owner_id,
       },
     });
   }
 
+  // Alias for backward compatibility
+  getBoardInfo(): Response {
+    return this.getProjectInfo();
+  }
+
   /**
-   * Get a board with all columns and tasks
+   * Get a project with all columns and tasks
    */
-  getBoard(id: string): Response {
-    const board = this.sql.exec('SELECT * FROM boards WHERE id = ?', id).toArray()[0];
-    if (!board) {
-      return jsonResponse({ error: 'Board not found' }, 404);
+  getProject(id: string): Response {
+    const project = this.sql.exec('SELECT * FROM projects WHERE id = ?', id).toArray()[0];
+    if (!project) {
+      return jsonResponse({ error: 'Project not found' }, 404);
     }
 
     const columns = this.sql.exec(
-      'SELECT * FROM columns WHERE board_id = ? ORDER BY position',
+      'SELECT * FROM columns WHERE project_id = ? ORDER BY position',
       id
     ).toArray();
 
     const tasks = this.sql.exec(
-      'SELECT * FROM tasks WHERE board_id = ? ORDER BY position',
+      'SELECT * FROM tasks WHERE project_id = ? ORDER BY position',
       id
     ).toArray();
 
     return jsonResponse({
       success: true,
       data: {
-        ...transformBoard(board as Record<string, unknown>),
+        ...transformProject(project as Record<string, unknown>),
         columns: columns.map(c => transformColumn(c as Record<string, unknown>)),
         tasks: tasks.map(t => transformTask(t as Record<string, unknown>))
       }
     });
   }
 
-  /**
-   * Update a board
-   */
-  updateBoard(id: string, data: { name?: string }): Response {
-    const now = new Date().toISOString();
-    this.sql.exec(
-      'UPDATE boards SET name = COALESCE(?, name), updated_at = ? WHERE id = ?',
-      data.name ?? null, now, id
-    );
-    return this.getBoard(id);
+  // Alias for backward compatibility
+  getBoard(id: string): Response {
+    return this.getProject(id);
   }
 
   /**
-   * Delete a board and all its data
+   * Update a project
    */
-  deleteBoard(id: string): Response {
-    this.sql.exec('DELETE FROM tasks WHERE board_id = ?', id);
-    this.sql.exec('DELETE FROM columns WHERE board_id = ?', id);
-    this.sql.exec('DELETE FROM boards WHERE id = ?', id);
+  updateProject(id: string, data: { name?: string }): Response {
+    const now = new Date().toISOString();
+    this.sql.exec(
+      'UPDATE projects SET name = COALESCE(?, name), updated_at = ? WHERE id = ?',
+      data.name ?? null, now, id
+    );
+    return this.getProject(id);
+  }
+
+  // Alias for backward compatibility
+  updateBoard(id: string, data: { name?: string }): Response {
+    return this.updateProject(id, data);
+  }
+
+  /**
+   * Delete a project and all its data
+   */
+  deleteProject(id: string): Response {
+    this.sql.exec('DELETE FROM tasks WHERE project_id = ?', id);
+    this.sql.exec('DELETE FROM columns WHERE project_id = ?', id);
+    this.sql.exec('DELETE FROM projects WHERE id = ?', id);
     return jsonResponse({ success: true });
+  }
+
+  // Alias for backward compatibility
+  deleteBoard(id: string): Response {
+    return this.deleteProject(id);
   }
 
   // ============================================
@@ -144,18 +173,18 @@ export class BoardService {
   /**
    * Create a new column
    */
-  createColumn(boardId: string, data: { name: string }): Response {
+  createColumn(projectId: string, data: { name: string }): Response {
     const id = this.generateId();
 
     const result = this.sql.exec(
-      'SELECT MAX(position) as max_pos FROM columns WHERE board_id = ?',
-      boardId
+      'SELECT MAX(position) as max_pos FROM columns WHERE project_id = ?',
+      projectId
     ).toArray()[0] as { max_pos: number | null };
     const position = (result?.max_pos ?? -1) + 1;
 
     this.sql.exec(
-      'INSERT INTO columns (id, board_id, name, position) VALUES (?, ?, ?, ?)',
-      id, boardId, data.name, position
+      'INSERT INTO columns (id, project_id, name, position) VALUES (?, ?, ?, ?)',
+      id, projectId, data.name, position
     );
 
     const column = this.sql.exec('SELECT * FROM columns WHERE id = ?', id).toArray()[0];
@@ -172,26 +201,26 @@ export class BoardService {
 
     if (data.position !== undefined) {
       const currentColumn = this.sql.exec(
-        'SELECT position, board_id FROM columns WHERE id = ?', id
-      ).toArray()[0] as { position: number; board_id: string } | undefined;
+        'SELECT position, project_id FROM columns WHERE id = ?', id
+      ).toArray()[0] as { position: number; project_id: string } | undefined;
 
       if (currentColumn) {
         const oldPosition = currentColumn.position;
         const newPosition = data.position;
-        const boardId = currentColumn.board_id;
+        const projectId = currentColumn.project_id;
 
         if (oldPosition !== newPosition) {
           if (oldPosition < newPosition) {
             this.sql.exec(
               `UPDATE columns SET position = position - 1
-               WHERE board_id = ? AND position > ? AND position <= ?`,
-              boardId, oldPosition, newPosition
+               WHERE project_id = ? AND position > ? AND position <= ?`,
+              projectId, oldPosition, newPosition
             );
           } else {
             this.sql.exec(
               `UPDATE columns SET position = position + 1
-               WHERE board_id = ? AND position >= ? AND position < ?`,
-              boardId, newPosition, oldPosition
+               WHERE project_id = ? AND position >= ? AND position < ?`,
+              projectId, newPosition, oldPosition
             );
           }
           this.sql.exec('UPDATE columns SET position = ? WHERE id = ?', newPosition, id);
@@ -224,8 +253,9 @@ export class BoardService {
    * Create a new task
    */
   createTask(data: {
-    columnId: string;
-    boardId: string;
+    columnId?: string;
+    projectId?: string;
+    userId?: string;
     title: string;
     description?: string;
     priority?: string;
@@ -234,18 +264,28 @@ export class BoardService {
     const id = this.generateId();
     const now = new Date().toISOString();
 
-    const result = this.sql.exec(
-      'SELECT MAX(position) as max_pos FROM tasks WHERE column_id = ?',
-      data.columnId
-    ).toArray()[0] as { max_pos: number | null };
-    const position = (result?.max_pos ?? -1) + 1;
+    // Calculate position based on column (if provided) or globally
+    let position = 0;
+    if (data.columnId) {
+      const result = this.sql.exec(
+        'SELECT MAX(position) as max_pos FROM tasks WHERE column_id = ?',
+        data.columnId
+      ).toArray()[0] as { max_pos: number | null };
+      position = (result?.max_pos ?? -1) + 1;
+    } else {
+      const result = this.sql.exec(
+        'SELECT MAX(position) as max_pos FROM tasks WHERE column_id IS NULL'
+      ).toArray()[0] as { max_pos: number | null };
+      position = (result?.max_pos ?? -1) + 1;
+    }
 
     this.sql.exec(
-      `INSERT INTO tasks (id, column_id, board_id, title, description, priority, position, context, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO tasks (id, column_id, project_id, user_id, title, description, priority, position, context, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       id,
-      data.columnId,
-      data.boardId,
+      data.columnId ?? null,
+      data.projectId ?? null,
+      data.userId ?? null,
       data.title,
       data.description ?? null,
       data.priority ?? 'medium',
@@ -268,6 +308,16 @@ export class BoardService {
       return jsonResponse({ error: 'Task not found' }, 404);
     }
     return jsonResponse({ success: true, data: transformTask(task as Record<string, unknown>) });
+  }
+
+  /**
+   * Get all tasks (for standalone tasks container)
+   */
+  getTasks(): Response {
+    const tasks = this.sql.exec(
+      'SELECT * FROM tasks ORDER BY position'
+    ).toArray();
+    return jsonResponse({ success: true, data: tasks.map(t => transformTask(t as Record<string, unknown>)) });
   }
 
   /**
@@ -393,7 +443,7 @@ export class BoardService {
   /**
    * Get metadata for a URL to display as a link pill
    */
-  async getLinkMetadata(boardId: string, data: { url: string }): Promise<Response> {
+  async getLinkMetadata(projectId: string, data: { url: string }): Promise<Response> {
     const { url } = data;
     if (!url) {
       return jsonResponse({
@@ -404,8 +454,8 @@ export class BoardService {
 
     // Get all MCP servers with URL patterns
     const servers = this.sql.exec(
-      "SELECT * FROM mcp_servers WHERE board_id = ? AND url_patterns IS NOT NULL AND status = 'connected'",
-      boardId
+      "SELECT * FROM mcp_servers WHERE project_id = ? AND url_patterns IS NOT NULL AND status = 'connected'",
+      projectId
     ).toArray();
 
     for (const serverRow of servers) {
@@ -430,7 +480,7 @@ export class BoardService {
         if (match) {
           try {
             const metadata = await this.fetchLinkMetadataFromMCP(
-              boardId,
+              projectId,
               server.name,
               server.credentialId,
               patternDef.fetchTool,
@@ -456,7 +506,7 @@ export class BoardService {
    * Fetch metadata from an MCP server for a matched URL
    */
   private async fetchLinkMetadataFromMCP(
-    boardId: string,
+    projectId: string,
     _serverName: string,
     _credentialId: string | undefined,
     fetchTool: string,
@@ -469,7 +519,7 @@ export class BoardService {
       return null;
     }
 
-    const accessToken = await this.credentialService.getValidAccessToken(boardId, credentialType);
+    const accessToken = await this.credentialService.getValidAccessToken(projectId, credentialType);
     if (!accessToken) {
       return null;
     }
@@ -541,10 +591,10 @@ export class BoardService {
   // ============================================
 
   /**
-   * Get GitHub repos for a board
+   * Get GitHub repos for a project
    */
-  async getGitHubRepos(boardId: string): Promise<Response> {
-    const accessToken = await this.credentialService.getCredentialValue(boardId, CREDENTIAL_TYPES.GITHUB_OAUTH);
+  async getGitHubRepos(projectId: string): Promise<Response> {
+    const accessToken = await this.credentialService.getCredentialValue(projectId, CREDENTIAL_TYPES.GITHUB_OAUTH);
 
     if (!accessToken) {
       return jsonResponse({
@@ -604,5 +654,127 @@ export class BoardService {
         error: { code: 'GITHUB_ERROR', message: error instanceof Error ? error.message : 'Failed to fetch repos' }
       }, 500);
     }
+  }
+
+  // ============================================
+  // AGENT OPERATIONS
+  // ============================================
+
+  /**
+   * Get all agents for a project (or global agents if projectId is null)
+   */
+  getAgents(projectId: string | null): Response {
+    let agents;
+    if (projectId) {
+      // Get project-specific agents + global agents
+      agents = this.sql.exec(
+        'SELECT * FROM agents WHERE project_id = ? OR project_id IS NULL ORDER BY name',
+        projectId
+      ).toArray();
+    } else {
+      // Get only global agents
+      agents = this.sql.exec(
+        'SELECT * FROM agents WHERE project_id IS NULL ORDER BY name'
+      ).toArray();
+    }
+    return jsonResponse({ success: true, data: agents.map(a => transformAgent(a as Record<string, unknown>)) });
+  }
+
+  /**
+   * Get a single agent by ID
+   */
+  getAgent(agentId: string): Response {
+    const agent = this.sql.exec('SELECT * FROM agents WHERE id = ?', agentId).toArray()[0];
+    if (!agent) {
+      return jsonResponse({ success: false, error: { code: 'NOT_FOUND', message: 'Agent not found' } }, 404);
+    }
+    return jsonResponse({ success: true, data: transformAgent(agent as Record<string, unknown>) });
+  }
+
+  /**
+   * Create a new agent
+   */
+  createAgent(data: {
+    projectId?: string | null;
+    name: string;
+    description?: string;
+    systemPrompt: string;
+    model?: string;
+    icon?: string;
+  }): Response {
+    const id = this.generateId();
+    const now = new Date().toISOString();
+
+    this.sql.exec(
+      `INSERT INTO agents (id, project_id, name, description, system_prompt, model, icon, enabled, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?)`,
+      id,
+      data.projectId ?? null,
+      data.name,
+      data.description ?? null,
+      data.systemPrompt,
+      data.model ?? 'claude-sonnet-4-5-20250929',
+      data.icon ?? null,
+      now,
+      now
+    );
+
+    const agent = this.sql.exec('SELECT * FROM agents WHERE id = ?', id).toArray()[0];
+    return jsonResponse({ success: true, data: transformAgent(agent as Record<string, unknown>) });
+  }
+
+  /**
+   * Update an agent
+   */
+  updateAgent(agentId: string, data: {
+    name?: string;
+    description?: string;
+    systemPrompt?: string;
+    model?: string;
+    icon?: string;
+    enabled?: boolean;
+  }): Response {
+    const now = new Date().toISOString();
+
+    const existing = this.sql.exec('SELECT * FROM agents WHERE id = ?', agentId).toArray()[0] as Record<string, unknown> | undefined;
+    if (!existing) {
+      return jsonResponse({ success: false, error: { code: 'NOT_FOUND', message: 'Agent not found' } }, 404);
+    }
+
+    this.sql.exec(
+      `UPDATE agents SET
+        name = ?,
+        description = ?,
+        system_prompt = ?,
+        model = ?,
+        icon = ?,
+        enabled = ?,
+        updated_at = ?
+       WHERE id = ?`,
+      data.name ?? existing.name,
+      data.description ?? existing.description,
+      data.systemPrompt ?? existing.system_prompt,
+      data.model ?? existing.model,
+      data.icon ?? existing.icon,
+      data.enabled !== undefined ? (data.enabled ? 1 : 0) : existing.enabled,
+      now,
+      agentId
+    );
+
+    const agent = this.sql.exec('SELECT * FROM agents WHERE id = ?', agentId).toArray()[0];
+    return jsonResponse({ success: true, data: transformAgent(agent as Record<string, unknown>) });
+  }
+
+  /**
+   * Delete an agent
+   */
+  deleteAgent(agentId: string): Response {
+    const existing = this.sql.exec('SELECT id FROM agents WHERE id = ?', agentId).toArray()[0];
+    if (!existing) {
+      return jsonResponse({ success: false, error: { code: 'NOT_FOUND', message: 'Agent not found' } }, 404);
+    }
+
+    this.sql.exec('DELETE FROM agents WHERE id = ?', agentId);
+    return jsonResponse({ success: true });
   }
 }

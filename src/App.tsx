@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import { BoardProvider, useBoard } from './context/BoardContext';
+import { ProjectProvider, useProject } from './context/ProjectContext';
 import { ToastProvider } from './context/ToastContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { Header } from './components/Header/Header';
 import { Home } from './components/Home/Home';
 import { Board } from './components/Board/Board';
+import { Tasks } from './components/Tasks';
 import { Roadmap } from './components/Roadmap';
 import { BugBoard } from './components/BugBoard';
 import { GitHubCallback } from './components/GitHubCallback';
@@ -45,14 +46,14 @@ function AuthGate({ children }: { children: React.ReactNode }) {
 
 function AppContent() {
   const [paletteOpen, setPaletteOpen] = useState(false);
-  const { activeBoard, setAddingToColumn } = useBoard();
+  const { activeProject, setAddingToColumn } = useProject();
   const location = useLocation();
 
   const handleNewTask = useCallback((columnIndex: number) => {
-    if (activeBoard && activeBoard.columns[columnIndex]) {
-      setAddingToColumn(activeBoard.columns[columnIndex].id);
+    if (activeProject && activeProject.columns[columnIndex]) {
+      setAddingToColumn(activeProject.columns[columnIndex].id);
     }
-  }, [activeBoard, setAddingToColumn]);
+  }, [activeProject, setAddingToColumn]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -76,16 +77,16 @@ function AppContent() {
       // Shortcuts that only work when not in an input
       if (!isInput && !paletteOpen) {
         // n - new task in first column
-        if (e.key === 'n' && activeBoard) {
+        if (e.key === 'n' && activeProject) {
           e.preventDefault();
           handleNewTask(0);
           return;
         }
 
         // 1, 2, 3 - new task in column 1, 2, or 3
-        if (['1', '2', '3'].includes(e.key) && activeBoard) {
+        if (['1', '2', '3'].includes(e.key) && activeProject) {
           const colIndex = parseInt(e.key) - 1;
-          if (activeBoard.columns[colIndex]) {
+          if (activeProject.columns[colIndex]) {
             e.preventDefault();
             handleNewTask(colIndex);
           }
@@ -96,7 +97,7 @@ function AppContent() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [paletteOpen, activeBoard, handleNewTask]);
+  }, [paletteOpen, activeProject, handleNewTask]);
 
   // Render full-page callbacks without the app layout
   const isCallbackRoute = CALLBACK_ROUTES.includes(location.pathname);
@@ -117,7 +118,10 @@ function AppContent() {
         <main className="app-main">
           <Routes>
             <Route path="/" element={<Home />} />
-            <Route path="/board/:boardId" element={<Board />} />
+            <Route path="/tasks" element={<Tasks />} />
+            <Route path="/project/:projectId" element={<Board />} />
+            {/* Backward compatibility for old board URLs */}
+            <Route path="/board/:projectId" element={<Board />} />
             <Route path="/roadmap" element={<Roadmap />} />
             <Route path="/bugs" element={<BugBoard />} />
             <Route path="*" element={<Navigate to="/" replace />} />
@@ -145,9 +149,9 @@ function App() {
         <AuthProvider>
           <ToastProvider>
             <AuthGate>
-              <BoardProvider>
+              <ProjectProvider>
                 <AppContent />
-              </BoardProvider>
+              </ProjectProvider>
             </AuthGate>
           </ToastProvider>
         </AuthProvider>

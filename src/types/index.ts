@@ -8,29 +8,36 @@ export interface User {
   id: string;
   email: string;
   logoutUrl?: string | null;
+  config?: {
+    anthropicApiKeyConfigured?: boolean;
+  };
 }
 
-export interface Board {
+export interface Project {
   id: string;
   name: string;
   ownerId?: string;
   columns: Column[];
-  toolConfig?: BoardToolConfig;
+  toolConfig?: ProjectToolConfig;
   createdAt: string;
   updatedAt: string;
 }
 
+/** @deprecated Use Project instead */
+export type Board = Project;
+
 export interface Column {
   id: string;
-  boardId: string;
+  projectId: string;
   name: string;
   position: number;
 }
 
 export interface Task {
   id: string;
-  columnId: string;
-  boardId: string;
+  columnId?: string;
+  projectId?: string;
+  userId?: string;
   title: string;
   description?: string;
   priority: TaskPriority;
@@ -46,11 +53,14 @@ export type TaskPriority = 'low' | 'medium' | 'high' | 'critical';
 // AGENT EXECUTION (Future-Ready)
 // ============================================
 
-export interface BoardToolConfig {
+export interface ProjectToolConfig {
   tools: ToolDefinition[];
   credentials: CredentialRef[];
   sandboxConfig?: SandboxSettings;
 }
+
+/** @deprecated Use ProjectToolConfig instead */
+export type BoardToolConfig = ProjectToolConfig;
 
 export interface ToolDefinition {
   id: string;
@@ -71,9 +81,9 @@ export interface CredentialRef {
   // Actual credentials stored encrypted separately
 }
 
-export interface BoardCredential {
+export interface ProjectCredential {
   id: string;
-  boardId: string;
+  projectId: string;
   type: CredentialType;
   name: string;
   // Note: encrypted_value is never exposed to frontend
@@ -81,6 +91,9 @@ export interface BoardCredential {
   createdAt: string;
   updatedAt: string;
 }
+
+/** @deprecated Use ProjectCredential instead */
+export type BoardCredential = ProjectCredential;
 
 export interface SandboxSettings {
   memoryLimitMb?: number;
@@ -150,12 +163,15 @@ export interface ColumnDragState {
   columnId: string | null;
 }
 
-export interface BoardViewState {
-  selectedBoardId: string | null;
+export interface ProjectViewState {
+  selectedProjectId: string | null;
   selectedTaskId: string | null;
   isCreatingTask: boolean;
   isEditingTask: boolean;
 }
+
+/** @deprecated Use ProjectViewState instead */
+export type BoardViewState = ProjectViewState;
 
 // ============================================
 // MCP SERVER TYPES
@@ -163,7 +179,7 @@ export interface BoardViewState {
 
 export interface MCPServer {
   id: string;
-  boardId: string;
+  projectId: string;
   name: string;
   type: 'remote' | 'hosted';
   endpoint?: string;
@@ -212,6 +228,23 @@ export interface JSONSchema {
 }
 
 // ============================================
+// AGENT TYPES (Custom AI agents)
+// ============================================
+
+export interface Agent {
+  id: string;
+  projectId: string | null;
+  name: string;
+  description: string | null;
+  systemPrompt: string;
+  model: string;
+  icon: string | null;
+  enabled: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ============================================
 // WORKFLOW PLAN TYPES
 // ============================================
 
@@ -250,7 +283,7 @@ export interface WorkflowResult {
 export interface WorkflowPlan {
   id: string;
   taskId: string;
-  boardId: string;
+  projectId: string;
   status: WorkflowPlanStatus;
   summary?: string;
   generatedCode?: string;

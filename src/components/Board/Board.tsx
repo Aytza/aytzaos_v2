@@ -1,21 +1,22 @@
 import { useEffect, useState, useCallback, type DragEvent } from 'react';
 import { useParams } from 'react-router-dom';
-import { useBoard } from '../../context/BoardContext';
+import { useProject } from '../../context/ProjectContext';
 import { Column } from '../Column/Column';
 import './Board.css';
 
 export function Board() {
-  const { boardId } = useParams<{ boardId: string }>();
-  const { activeBoard, loading, loadBoard, createColumn, columnDragState, setColumnDragState, moveColumn } = useBoard();
+  // Support both project and board URL params for backward compatibility
+  const { projectId } = useParams<{ projectId: string }>();
+  const { activeProject, loading, loadProject, createColumn, columnDragState, setColumnDragState, moveColumn } = useProject();
   const [newColumnId, setNewColumnId] = useState<string | null>(null);
   const [dropTargetIndex, setDropTargetIndex] = useState<number | null>(null);
 
-  // Load board from URL param on mount or when boardId changes
+  // Load project from URL param on mount or when projectId changes
   useEffect(() => {
-    if (boardId && boardId !== activeBoard?.id) {
-      loadBoard(boardId);
+    if (projectId && projectId !== activeProject?.id) {
+      loadProject(projectId);
     }
-  }, [boardId, activeBoard?.id, loadBoard]);
+  }, [projectId, activeProject?.id, loadProject]);
 
   // Clear newColumnId after it's been used to trigger edit mode
   useEffect(() => {
@@ -40,21 +41,21 @@ export function Board() {
     );
   }
 
-  if (!activeBoard) {
+  if (!activeProject) {
     return (
       <div className="board-empty">
         <div className="empty-content">
           <span className="empty-icon">&gt;_</span>
-          <h2 className="empty-title">No Board Selected</h2>
+          <h2 className="empty-title">No Project Selected</h2>
           <p className="empty-text">
-            Create a new board or select an existing one to get started.
+            Create a new project or select an existing one to get started.
           </p>
         </div>
       </div>
     );
   }
 
-  const sortedColumns = [...activeBoard.columns].sort(
+  const sortedColumns = [...activeProject.columns].sort(
     (a, b) => a.position - b.position
   );
 

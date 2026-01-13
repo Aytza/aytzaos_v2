@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
-import { useBoard } from '../../context/BoardContext';
+import { useProject } from '../../context/ProjectContext';
 import { useAuth } from '../../context/AuthContext';
 import { Modal, Input, Button } from '../common';
-import { BoardSettings } from '../Settings';
+import { BoardSettings, UserSettings } from '../Settings';
 import { WeftLogo } from './WeftLogo';
 import * as api from '../../api/client';
 import './Header.css';
@@ -12,20 +12,22 @@ export function Header() {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
-  const { boards, activeBoard, clearActiveBoard, createBoard, activeWorkflows, updateWorkflowPlan, removeWorkflowPlan } = useBoard();
+  const { projects, activeProject, clearActiveProject, createProject, activeWorkflows, updateWorkflowPlan, removeWorkflowPlan } = useProject();
   const { user, signOut } = useAuth();
-  const [showBoardModal, setShowBoardModal] = useState(false);
+  const [showProjectModal, setShowProjectModal] = useState(false);
   const [showSelector, setShowSelector] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showUserSettings, setShowUserSettings] = useState(false);
   const [showExecutions, setShowExecutions] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
-  const [newBoardName, setNewBoardName] = useState('');
+  const [newProjectName, setNewProjectName] = useState('');
   const [confirmingCancel, setConfirmingCancel] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const executionsRef = useRef<HTMLDivElement>(null);
   const userMenuRef = useRef<HTMLDivElement>(null);
 
   const isHome = location.pathname === '/';
+  const isTasksPage = location.pathname === '/tasks';
   const isRoadmap = location.pathname === '/roadmap';
   const isBugs = location.pathname === '/bugs';
 
@@ -33,10 +35,10 @@ export function Header() {
   useEffect(() => {
     const githubConnected = searchParams.get('github');
     const githubError = searchParams.get('github_error');
-    if ((githubConnected === 'connected' || githubError) && activeBoard) {
+    if ((githubConnected === 'connected' || githubError) && activeProject) {
       setShowSettings(true);
     }
-  }, [searchParams, activeBoard]);
+  }, [searchParams, activeProject]);
 
   // Close dropdowns when clicking outside
   useEffect(() => {
@@ -63,23 +65,23 @@ export function Header() {
   }, [showSelector, showExecutions, showUserMenu]);
 
   const handleGoHome = () => {
-    clearActiveBoard();
+    clearActiveProject();
     navigate('/');
   };
 
-  const handleCreateBoard = async () => {
-    if (newBoardName.trim()) {
-      const boardId = await createBoard(newBoardName.trim());
-      setNewBoardName('');
-      setShowBoardModal(false);
-      if (boardId) {
-        navigate(`/board/${boardId}`);
+  const handleCreateProject = async () => {
+    if (newProjectName.trim()) {
+      const projectId = await createProject(newProjectName.trim());
+      setNewProjectName('');
+      setShowProjectModal(false);
+      if (projectId) {
+        navigate(`/project/${projectId}`);
       }
     }
   };
 
-  const handleSelectBoard = (boardId: string) => {
-    navigate(`/board/${boardId}`);
+  const handleSelectProject = (projectId: string) => {
+    navigate(`/project/${projectId}`);
     setShowSelector(false);
   };
 
@@ -111,25 +113,25 @@ export function Header() {
               onClick={() => setShowSelector(!showSelector)}
             >
               <span className="board-selector-name">
-                {activeBoard?.name || 'Select Board'}
+                {activeProject?.name || 'Select Project'}
               </span>
               <span className="board-selector-arrow">▼</span>
             </button>
 
             {showSelector && (
               <div className="board-selector-dropdown">
-                {boards.length === 0 ? (
-                  <div className="board-selector-empty">No boards yet</div>
+                {projects.length === 0 ? (
+                  <div className="board-selector-empty">No projects yet</div>
                 ) : (
-                  boards.map((board) => (
+                  projects.map((project) => (
                     <button
-                      key={board.id}
+                      key={project.id}
                       className={`board-selector-item ${
-                        activeBoard?.id === board.id ? 'active' : ''
+                        activeProject?.id === project.id ? 'active' : ''
                       }`}
-                      onClick={() => handleSelectBoard(board.id)}
+                      onClick={() => handleSelectProject(project.id)}
                     >
-                      {board.name}
+                      {project.name}
                     </button>
                   ))
                 )}
@@ -138,10 +140,10 @@ export function Header() {
                   className="board-selector-item board-selector-new"
                   onClick={() => {
                     setShowSelector(false);
-                    setShowBoardModal(true);
+                    setShowProjectModal(true);
                   }}
                 >
-                  + New Board
+                  + New Project
                 </button>
               </div>
             )}
@@ -150,8 +152,17 @@ export function Header() {
       </div>
 
       <div className="header-right">
+        {/* My Tasks link */}
+        <button
+          className={`header-nav-btn ${isTasksPage ? 'active' : ''}`}
+          onClick={() => navigate('/tasks')}
+          title="My Tasks"
+        >
+          Tasks
+        </button>
+
         {/* Active Agents dropdown */}
-        {!isHome && activeBoard && (
+        {!isHome && !isTasksPage && activeProject && (
           <div className="executions-wrapper" ref={executionsRef}>
             <button
               className={`executions-trigger ${activeWorkflows.length === 0 ? 'executions-trigger-empty' : ''}`}
@@ -170,8 +181,8 @@ export function Header() {
                   <div className="executions-empty">No agents running</div>
                 ) : (
                   activeWorkflows.map((workflow) => {
-                    // Look up task title from active board
-                    const task = activeBoard?.tasks?.find((t) => t.id === workflow.taskId);
+                    // Look up task title from active project
+                    const task = activeProject?.tasks?.find((t) => t.id === workflow.taskId);
                     const taskTitle = task?.title || `Task ${workflow.taskId.slice(0, 8)}`;
 
                     // Get current step info
@@ -211,8 +222,8 @@ export function Header() {
                           className={`executions-item-stop ${confirmingCancel === workflow.id ? 'confirming' : ''}`}
                           onClick={async (e) => {
                             e.stopPropagation();
-                            if (confirmingCancel === workflow.id && activeBoard) {
-                              const result = await api.cancelWorkflow(activeBoard.id, workflow.id);
+                            if (confirmingCancel === workflow.id && activeProject) {
+                              const result = await api.cancelWorkflow(activeProject.id, workflow.id);
                               if (result.success && result.data) {
                                 updateWorkflowPlan(result.data);
                               } else {
@@ -237,12 +248,12 @@ export function Header() {
           </div>
         )}
 
-        {/* Board Settings - separate from user menu since it's board-scoped */}
-        {!isHome && activeBoard && (
+        {/* Project Settings - separate from user menu since it's project-scoped */}
+        {!isHome && !isTasksPage && activeProject && (
           <button
             className="header-settings-btn"
             onClick={() => setShowSettings(true)}
-            title="Board Settings"
+            title="Project Settings"
           >
             Settings
           </button>
@@ -267,6 +278,15 @@ export function Header() {
                 <div className="user-menu-email">{user.email}</div>
                 <div className="user-menu-divider" />
                 <button
+                  className="user-menu-item"
+                  onClick={() => {
+                    setShowUserMenu(false);
+                    setShowUserSettings(true);
+                  }}
+                >
+                  Settings
+                </button>
+                <button
                   className="user-menu-item user-menu-signout"
                   onClick={() => {
                     setShowUserMenu(false);
@@ -282,35 +302,35 @@ export function Header() {
       </div>
 
       <Modal
-        isOpen={showBoardModal}
-        onClose={() => setShowBoardModal(false)}
-        title="Create New Board"
+        isOpen={showProjectModal}
+        onClose={() => setShowProjectModal(false)}
+        title="Create New Project"
         width="sm"
       >
         <form
           onSubmit={(e) => {
             e.preventDefault();
-            handleCreateBoard();
+            handleCreateProject();
           }}
         >
           <div className="modal-form">
             <Input
-              label="Board Name"
+              label="Project Name"
               placeholder="My Project"
-              value={newBoardName}
-              onChange={(e) => setNewBoardName(e.target.value)}
+              value={newProjectName}
+              onChange={(e) => setNewProjectName(e.target.value)}
               autoFocus
             />
             <div className="modal-actions">
               <Button
                 type="button"
                 variant="ghost"
-                onClick={() => setShowBoardModal(false)}
+                onClick={() => setShowProjectModal(false)}
               >
                 Cancel
               </Button>
               <Button type="submit" variant="primary">
-                Create Board
+                Create Project
               </Button>
             </div>
           </div>
@@ -320,6 +340,11 @@ export function Header() {
       <BoardSettings
         isOpen={showSettings}
         onClose={() => setShowSettings(false)}
+      />
+
+      <UserSettings
+        isOpen={showUserSettings}
+        onClose={() => setShowUserSettings(false)}
       />
     </header>
   );

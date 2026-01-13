@@ -1,7 +1,7 @@
 import { jsonResponse } from '../utils/response';
 import { transformWorkflowPlan, transformWorkflowLog } from '../utils/transformations';
 
-type BroadcastFn = (boardId: string, type: string, data: Record<string, unknown>) => void;
+type BroadcastFn = (projectId: string, type: string, data: Record<string, unknown>) => void;
 
 export class WorkflowService {
   private sql: SqlStorage;
@@ -47,19 +47,19 @@ export class WorkflowService {
   }
 
   /**
-   * Get all workflow plans for a board (latest per task)
+   * Get all workflow plans for a project (latest per task)
    */
-  getBoardWorkflowPlans(boardId: string): Response {
+  getProjectWorkflowPlans(projectId: string): Response {
     const plans = this.sql.exec(`
       SELECT wp.* FROM workflow_plans wp
       INNER JOIN (
         SELECT task_id, MAX(created_at) as max_created
         FROM workflow_plans
-        WHERE board_id = ?
+        WHERE project_id = ?
         GROUP BY task_id
       ) latest ON wp.task_id = latest.task_id AND wp.created_at = latest.max_created
-      WHERE wp.board_id = ?
-    `, boardId, boardId).toArray();
+      WHERE wp.project_id = ?
+    `, projectId, projectId).toArray();
 
     return jsonResponse({
       success: true,
@@ -91,7 +91,7 @@ export class WorkflowService {
    */
   createWorkflowPlan(taskId: string, data: {
     id?: string;
-    boardId: string;
+    projectId: string;
     summary?: string;
     generatedCode?: string;
     steps?: object[];
@@ -100,11 +100,11 @@ export class WorkflowService {
     const now = new Date().toISOString();
 
     this.sql.exec(
-      `INSERT INTO workflow_plans (id, task_id, board_id, status, summary, generated_code, steps, created_at, updated_at)
+      `INSERT INTO workflow_plans (id, task_id, project_id, status, summary, generated_code, steps, created_at, updated_at)
        VALUES (?, ?, ?, 'planning', ?, ?, ?, ?, ?)`,
       id,
       taskId,
-      data.boardId,
+      data.projectId,
       data.summary || null,
       data.generatedCode || null,
       data.steps ? JSON.stringify(data.steps) : null,
@@ -159,8 +159,8 @@ export class WorkflowService {
     // Broadcast update
     const updatedPlan = this.sql.exec('SELECT * FROM workflow_plans WHERE id = ?', planId).toArray()[0];
     if (updatedPlan) {
-      const boardId = (updatedPlan as Record<string, unknown>).board_id as string;
-      this.broadcast(boardId, 'workflow_plan_update', transformWorkflowPlan(updatedPlan as Record<string, unknown>));
+      const projectId = (updatedPlan as Record<string, unknown>).project_id as string;
+      this.broadcast(projectId, 'workflow_plan_update', transformWorkflowPlan(updatedPlan as Record<string, unknown>));
     }
 
     return this.getWorkflowPlan(planId);
@@ -214,8 +214,8 @@ export class WorkflowService {
     // Broadcast the update
     const plan = this.sql.exec('SELECT * FROM workflow_plans WHERE id = ?', planId).toArray()[0];
     if (plan) {
-      const boardId = (plan as Record<string, unknown>).board_id as string;
-      this.broadcast(boardId, 'workflow_plan_update', transformWorkflowPlan(plan as Record<string, unknown>));
+      const projectId = (plan as Record<string, unknown>).project_id as string;
+      this.broadcast(projectId, 'workflow_plan_update', transformWorkflowPlan(plan as Record<string, unknown>));
     }
 
     return this.getWorkflowPlan(planId);
@@ -297,10 +297,10 @@ export class WorkflowService {
       metadata: metadata || null,
     };
 
-    // Get boardId from plan and broadcast
-    const plan = this.sql.exec('SELECT board_id FROM workflow_plans WHERE id = ?', planId).toArray()[0];
+    // Get projectId from plan and broadcast
+    const plan = this.sql.exec('SELECT project_id FROM workflow_plans WHERE id = ?', planId).toArray()[0];
     if (plan) {
-      this.broadcast((plan as Record<string, unknown>).board_id as string, 'workflow_log', log);
+      this.broadcast((plan as Record<string, unknown>).project_id as string, 'workflow_log', log);
     }
 
     return log;

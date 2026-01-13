@@ -18,10 +18,15 @@ export function toCamelCase(obj: Record<string, unknown>): Record<string, unknow
 }
 
 /**
- * Transform board record for API response
+ * Transform project record for API response
  */
+export function transformProject(project: Record<string, unknown>): Record<string, unknown> {
+  return toCamelCase(project);
+}
+
+// Alias for backward compatibility
 export function transformBoard(board: Record<string, unknown>): Record<string, unknown> {
-  return toCamelCase(board);
+  return transformProject(board);
 }
 
 /**
@@ -87,5 +92,15 @@ export function transformWorkflowLog(log: Record<string, unknown>): Record<strin
     }
   }
 
+  return transformed;
+}
+
+/**
+ * Transform agent record for API response
+ */
+export function transformAgent(agent: Record<string, unknown>): Record<string, unknown> {
+  const transformed = toCamelCase(agent);
+  // Convert enabled from SQLite integer to boolean
+  transformed.enabled = transformed.enabled === 1;
   return transformed;
 }

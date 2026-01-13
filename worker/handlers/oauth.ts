@@ -120,17 +120,18 @@ async function handleOAuthUrl(
     }, 500);
   }
 
-  const boardId = url.searchParams.get('boardId');
-  if (!boardId) {
+  // Support both projectId (new) and boardId (legacy)
+  const projectId = url.searchParams.get('projectId') || url.searchParams.get('boardId');
+  if (!projectId) {
     return jsonResponse({
       success: false,
-      error: { code: 'BAD_REQUEST', message: 'boardId is required' },
+      error: { code: 'BAD_REQUEST', message: 'projectId is required' },
     }, 400);
   }
 
   const redirectUri = `${url.origin}${provider.callbackPath}`;
   const signedState = await encodeOAuthState(
-    { boardId, nonce: generateState() },
+    { boardId: projectId, nonce: generateState() },
     env.ENCRYPTION_KEY
   );
 
@@ -176,18 +177,18 @@ async function handleOAuthExchange(
       }, 400);
     }
 
-    const { boardId } = state;
+    const { boardId: projectId } = state;
     const redirectUri = `${url.origin}${provider.callbackPath}`;
 
     const tokenData = await provider.exchangeCode(code, clientId, clientSecret, redirectUri);
     const user = await provider.getUser(tokenData.access_token);
 
     // Store credential and create MCP servers
-    await storeCredentialAndCreateMCPs(env, boardId, provider, user, tokenData);
+    await storeCredentialAndCreateMCPs(env, projectId, provider, user, tokenData);
 
     return jsonResponse({
       success: true,
-      data: { boardId },
+      data: { projectId },
     });
   } catch (error) {
     return jsonResponse({
@@ -202,16 +203,16 @@ async function handleOAuthExchange(
 
 async function storeCredentialAndCreateMCPs(
   env: Env,
-  boardId: string,
+  projectId: string,
   provider: OAuthProvider,
   user: OAuthUserData,
   tokenData: OAuthTokenData
 ): Promise<void> {
-  const doId = env.BOARD_DO.idFromName(boardId);
+  const doId = env.BOARD_DO.idFromName(projectId);
   const stub = env.BOARD_DO.get(doId) as BoardDOStub;
 
   const credentialData = provider.buildCredential(user, tokenData);
-  const credential = await stub.createCredential(boardId, {
+  const credential = await stub.createCredential(projectId, {
     type: provider.credentialType,
     name: credentialData.name,
     value: tokenData.access_token,
@@ -225,7 +226,7 @@ async function storeCredentialAndCreateMCPs(
   if (account) {
     // Use registry-based MCP creation (Google style - multiple MCPs per account)
     for (const mcpDef of account.mcps) {
-      const mcpServer = await stub.createMCPServer(boardId, {
+      const mcpServer = await stub.createMCPServer(projectId, {
         name: mcpDef.name,
         type: 'hosted',
         authType: 'oauth',
@@ -243,7 +244,7 @@ async function storeCredentialAndCreateMCPs(
   } else if (provider.name === 'github') {
     // Fallback for GitHub if not in registry
     const githubMcpDef = getMCPDefinition('github', 'github');
-    const mcpServer = await stub.createMCPServer(boardId, {
+    const mcpServer = await stub.createMCPServer(projectId, {
       name: 'GitHub',
       type: 'hosted',
       authType: 'oauth',
@@ -300,18 +301,18 @@ export async function handleGitHubOAuthCallback(
       return redirectWithError(url.origin, 'Invalid or expired state parameter');
     }
 
-    const { boardId } = state;
+    const { boardId: projectId } = state;
     const redirectUri = `${url.origin}/api/github/oauth/callback`;
 
     const tokenData = await githubProvider.exchangeCode(code, clientId, clientSecret, redirectUri);
     const user = await githubProvider.getUser(tokenData.access_token);
 
-    await storeCredentialAndCreateMCPs(env, boardId, githubProvider, user, tokenData);
+    await storeCredentialAndCreateMCPs(env, projectId, githubProvider, user, tokenData);
 
     return new Response(null, {
       status: 302,
       headers: {
-        Location: `${url.origin}/board/${boardId}?github=connected`,
+        Location: `${url.origin}/project/${projectId}?github=connected`,
       },
     });
   } catch (error) {

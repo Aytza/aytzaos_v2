@@ -57,7 +57,7 @@ const ACCOUNT_MCPS = [
 ];
 
 interface MCPSectionProps {
-  boardId: string;
+  projectId: string;
   credentials: BoardCredential[];
   onConnectGitHub: () => void;
   connectingGitHub: boolean;
@@ -89,7 +89,7 @@ const GOOGLE_ICON = (
 );
 
 export function MCPSection({
-  boardId,
+  projectId,
   credentials,
   onConnectGitHub,
   connectingGitHub,
@@ -102,13 +102,13 @@ export function MCPSection({
   const [addingAccountMCP, setAddingAccountMCP] = useState<string | null>(null);
 
   const loadMCPServers = useCallback(async () => {
-    const result = await api.getMCPServers(boardId);
+    const result = await api.getMCPServers(projectId);
     if (result.success && result.data) {
       setMcpServers(result.data);
       result.data.forEach((server) => loadServerTools(server.id));
     }
     setLoading(false);
-  }, [boardId]);
+  }, [projectId]);
 
   // Load MCP servers on mount and when credentials change (e.g., account disconnected)
   useEffect(() => {
@@ -116,14 +116,14 @@ export function MCPSection({
   }, [loadMCPServers, credentials]);
 
   const loadServerTools = async (serverId: string) => {
-    const result = await api.getMCPServerTools(boardId, serverId);
+    const result = await api.getMCPServerTools(projectId, serverId);
     if (result.success && result.data) {
       setServerTools((prev) => ({ ...prev, [serverId]: result.data! }));
     }
   };
 
   const handleDeleteMCP = async (serverId: string) => {
-    const result = await api.deleteMCPServer(boardId, serverId);
+    const result = await api.deleteMCPServer(projectId, serverId);
     if (result.success) {
       setMcpServers((prev) => prev.filter((s) => s.id !== serverId));
     }
@@ -132,7 +132,7 @@ export function MCPSection({
   const handleAddAccountMCP = async (accountId: string, mcpId: string) => {
     setAddingAccountMCP(mcpId);
     try {
-      const result = await api.createAccountMCP(boardId, accountId, mcpId);
+      const result = await api.createAccountMCP(projectId, accountId, mcpId);
       if (result.success && result.data) {
         setMcpServers((prev) => [...prev, result.data!]);
         loadServerTools(result.data.id);
@@ -393,7 +393,7 @@ export function MCPSection({
       {showMCPForm && (
         <div className="mcp-add-form">
           <MCPServerConnect
-            boardId={boardId}
+            projectId={projectId}
             onClose={() => {
               setShowMCPForm(false);
               setShowAddOptions(true);

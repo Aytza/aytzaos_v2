@@ -37,9 +37,15 @@ const DEFAULT_MODEL = 'claude-sonnet-4-5-20250929';
 export interface AgentWorkflowParams {
   planId: string;
   taskId: string;
-  boardId: string;
+  projectId: string;
+  /** User ID for loading global MCPs */
+  userId: string;
   taskDescription: string;
   anthropicApiKey: string;
+  /** Custom system prompt from custom agent */
+  customSystemPrompt?: string;
+  /** Custom model from custom agent */
+  agentModel?: string;
 }
 
 // Event sent to resume from checkpoint
@@ -143,10 +149,17 @@ function formatToolName(toolName: string): string {
 export class AgentWorkflow extends WorkflowEntrypoint<WorkflowEnv, AgentWorkflowParams> {
   async run(event: WorkflowEvent<AgentWorkflowParams>, step: WorkflowStep) {
     const params = event.payload;
-    const { planId, boardId, taskDescription, anthropicApiKey } = params;
+    const { planId, projectId, userId, taskDescription, anthropicApiKey, customSystemPrompt, agentModel } = params;
 
     const getBoardStub = (): DurableObjectStub<BoardDO> => {
-      const doId = this.env.BOARD_DO.idFromName(boardId);
+      const doId = this.env.BOARD_DO.idFromName(projectId);
+      return this.env.BOARD_DO.get(doId) as DurableObjectStub<BoardDO>;
+    };
+
+    // Get user's global container for global MCPs
+    const getUserGlobalStub = (): DurableObjectStub<BoardDO> => {
+      const userTasksId = `user-tasks-${userId}`;
+      const doId = this.env.BOARD_DO.idFromName(userTasksId);
       return this.env.BOARD_DO.get(doId) as DurableObjectStub<BoardDO>;
     };
 
@@ -162,23 +175,67 @@ export class AgentWorkflow extends WorkflowEntrypoint<WorkflowEnv, AgentWorkflow
 
     const broadcastStreamChunk = async (turnIndex: number, text: string) => {
       const stub = getBoardStub();
-      stub.broadcastStreamChunk(boardId, planId, turnIndex, text);
+      stub.broadcastStreamChunk(projectId, planId, turnIndex, text);
     };
 
     try {
       const mcpConfigJson = await step.do('load-mcp-config', async () => {
         const stub = getBoardStub();
+        const globalStub = getUserGlobalStub();
 
-        const rawServers = await stub.getMCPServers(boardId);
+        // Load project-specific MCP servers
+        const rawServers = await stub.getMCPServers(projectId);
         const enabledServers = rawServers.filter((s: { enabled: boolean }) => s.enabled);
 
+        // Load global MCP servers (user-level)
+        type MCPServerRow = { id: string; name: string; type: string; endpoint: string | null; authType: string; transportType: string | null; credentialId: string | null; enabled: boolean };
+        let globalRawServers: MCPServerRow[] = [];
+        try {
+          globalRawServers = await globalStub.getMCPServers('__global__') as MCPServerRow[];
+        } catch {
+          // User container may not exist yet, ignore
+        }
+        const enabledGlobalServers = globalRawServers.filter((s) => s.enabled);
+
         const servers: MCPServerInfo[] = [];
+
+        // Process global servers first
+        for (const server of enabledGlobalServers) {
+          const tools = await globalStub.getMCPServerTools(server.id);
+
+          let accessToken: string | undefined;
+          if (server.type === 'remote' && server.authType === 'oauth' && server.credentialId) {
+            const credData = await globalStub.getCredentialById('__global__', server.credentialId);
+            if (credData) {
+              accessToken = credData.value;
+            }
+          }
+
+          servers.push({
+            id: server.id,
+            name: server.name,
+            type: server.type as 'remote' | 'hosted',
+            endpoint: server.endpoint || undefined,
+            authType: server.authType,
+            transportType: server.transportType as 'streamable-http' | 'sse' | undefined,
+            credentialId: server.credentialId || undefined,
+            accessToken,
+            tools: tools.map((t: { name: string; description?: string | null; inputSchema: object; approvalRequiredFields?: string[] | null }) => ({
+              name: t.name,
+              description: t.description || '',
+              inputSchema: t.inputSchema as Record<string, unknown>,
+              approvalRequiredFields: t.approvalRequiredFields || undefined,
+            })),
+          });
+        }
+
+        // Process project-specific servers
         for (const server of enabledServers) {
           const tools = await stub.getMCPServerTools(server.id);
 
           let accessToken: string | undefined;
           if (server.type === 'remote' && server.authType === 'oauth' && server.credentialId) {
-            const credData = await stub.getCredentialById(boardId, server.credentialId);
+            const credData = await stub.getCredentialById(projectId, server.credentialId);
             if (credData) {
               accessToken = credData.value;
             }
@@ -224,7 +281,7 @@ export class AgentWorkflow extends WorkflowEntrypoint<WorkflowEnv, AgentWorkflow
         };
 
         for (const account of getOAuthAccounts()) {
-          const credData = await stub.getCredentialFull(boardId, account.credentialType);
+          const credData = await stub.getCredentialFull(projectId, account.credentialType);
 
           const tokenKey = `${account.id}Token`;
           let accessToken = credData?.value;
@@ -256,7 +313,7 @@ export class AgentWorkflow extends WorkflowEntrypoint<WorkflowEnv, AgentWorkflow
                       Date.now() + (newTokenData.expires_in || 3600) * 1000
                     ).toISOString();
 
-                    await stub.updateCredentialValue(boardId, account.credentialType, newTokenData.access_token, { expires_at: newExpiresAt });
+                    await stub.updateCredentialValue(projectId, account.credentialType, newTokenData.access_token, { expires_at: newExpiresAt });
 
                     credentials[`${account.id}RefreshToken`] = metadata.refresh_token as string;
                     credentials[`${account.id}TokenExpiresAt`] = newExpiresAt;
@@ -286,7 +343,12 @@ export class AgentWorkflow extends WorkflowEntrypoint<WorkflowEnv, AgentWorkflow
       };
 
       const claudeTools = this.buildClaudeTools(mcpConfig.servers);
-      const systemPrompt = this.buildSystemPrompt(mcpConfig.servers);
+      // Use custom system prompt if provided, otherwise build default
+      const systemPrompt = customSystemPrompt
+        ? this.buildSystemPromptWithCustom(customSystemPrompt, mcpConfig.servers)
+        : this.buildSystemPrompt(mcpConfig.servers);
+      // Use custom model if provided, otherwise use default
+      const modelToUse = agentModel || DEFAULT_MODEL;
       const messages: MessageParam[] = [
         { role: 'user', content: taskDescription },
       ];
@@ -311,7 +373,7 @@ export class AgentWorkflow extends WorkflowEntrypoint<WorkflowEnv, AgentWorkflow
           const client = new Anthropic({ apiKey: mcpConfig.credentials.anthropicApiKey });
 
           const stream = client.messages.stream({
-            model: DEFAULT_MODEL,
+            model: modelToUse,
             max_tokens: 8192,
             system: systemPrompt,
             messages,
@@ -809,6 +871,31 @@ When providing final outputs to the user:
 - No extra headers, metadata, or footers
 - No "Here is..." preambles or "I've created..." explanations
 - Just the content itself`;
+  }
+
+  /**
+   * Build system prompt with custom agent prompt
+   * Combines the custom prompt with tool information and standard guidelines
+   */
+  private buildSystemPromptWithCustom(customPrompt: string, servers: MCPServerInfo[]): string {
+    const toolsList = servers
+      .map((s) => `- **${s.name}**: ${s.tools.map((t) => t.name).join(', ')}`)
+      .join('\n');
+
+    const serverNames = servers.map(s => s.name.replace(/\s+/g, '_'));
+    const workflowGuidance = getWorkflowGuidance(serverNames);
+
+    return `${customPrompt}
+
+## Available Tools
+${toolsList}
+- **request_approval**: Pause and ask user for approval
+
+## Tool Usage Guidelines
+- Use request_approval before any irreversible actions (sending emails, creating documents, etc.)
+- When approval includes \`userData\`, use those values to override your original data
+
+${workflowGuidance}`;
   }
 
   /**

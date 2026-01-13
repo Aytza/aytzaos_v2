@@ -33,12 +33,12 @@ export class CredentialService {
   }
 
   /**
-   * Get all credentials for a board (without encrypted values)
+   * Get all credentials for a project (without encrypted values)
    */
-  getCredentials(boardId: string): Response {
+  getCredentials(projectId: string): Response {
     const credentials = this.sql.exec(
-      'SELECT id, board_id, type, name, metadata, created_at, updated_at FROM board_credentials WHERE board_id = ?',
-      boardId
+      'SELECT id, project_id, type, name, metadata, created_at, updated_at FROM project_credentials WHERE project_id = ?',
+      projectId
     ).toArray();
 
     return jsonResponse({
@@ -60,7 +60,7 @@ export class CredentialService {
   /**
    * Create a new credential with encrypted value
    */
-  async createCredential(boardId: string, data: {
+  async createCredential(projectId: string, data: {
     type: string;
     name: string;
     value: string;
@@ -71,10 +71,10 @@ export class CredentialService {
     const encryptedValue = await this.encrypt(data.value);
 
     this.sql.exec(
-      `INSERT INTO board_credentials (id, board_id, type, name, encrypted_value, metadata, created_at, updated_at)
+      `INSERT INTO project_credentials (id, project_id, type, name, encrypted_value, metadata, created_at, updated_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       id,
-      boardId,
+      projectId,
       data.type,
       data.name,
       encryptedValue,
@@ -87,7 +87,7 @@ export class CredentialService {
       success: true,
       data: {
         id,
-        boardId,
+        projectId,
         type: data.type,
         name: data.name,
         createdAt: now,
@@ -99,7 +99,7 @@ export class CredentialService {
   /**
    * Delete a credential and cascade to associated MCP servers
    */
-  deleteCredential(boardId: string, credentialId: string): Response {
+  deleteCredential(projectId: string, credentialId: string): Response {
     // Cascade delete associated MCP servers and their tools
     this.sql.exec(
       `DELETE FROM mcp_tool_schemas WHERE server_id IN (
@@ -112,9 +112,9 @@ export class CredentialService {
       credentialId
     );
     this.sql.exec(
-      'DELETE FROM board_credentials WHERE id = ? AND board_id = ?',
+      'DELETE FROM project_credentials WHERE id = ? AND project_id = ?',
       credentialId,
-      boardId
+      projectId
     );
 
     return jsonResponse({ success: true });
@@ -123,10 +123,10 @@ export class CredentialService {
   /**
    * Get decrypted credential value by type
    */
-  async getCredentialValue(boardId: string, type: string): Promise<string | null> {
+  async getCredentialValue(projectId: string, type: string): Promise<string | null> {
     const credential = this.sql.exec(
-      'SELECT encrypted_value FROM board_credentials WHERE board_id = ? AND type = ?',
-      boardId,
+      'SELECT encrypted_value FROM project_credentials WHERE project_id = ? AND type = ?',
+      projectId,
       type
     ).toArray()[0] as { encrypted_value: string } | undefined;
 
@@ -139,12 +139,12 @@ export class CredentialService {
    * Centralizes all OAuth token refresh logic.
    */
   async getValidAccessToken(
-    boardId: string,
+    projectId: string,
     credentialType: string
   ): Promise<string | null> {
     const credential = this.sql.exec(
-      'SELECT encrypted_value, metadata FROM board_credentials WHERE board_id = ? AND type = ?',
-      boardId,
+      'SELECT encrypted_value, metadata FROM project_credentials WHERE project_id = ? AND type = ?',
+      projectId,
       credentialType
     ).toArray()[0] as { encrypted_value: string; metadata: string | null } | undefined;
 
@@ -180,7 +180,7 @@ export class CredentialService {
               ).toISOString();
 
               await this.updateCredentialValue(
-                boardId,
+                projectId,
                 credentialType,
                 newTokenData.access_token,
                 { expires_at: newExpiresAt }
@@ -204,8 +204,8 @@ export class CredentialService {
   /**
    * HTTP handler for getting credential value
    */
-  async getCredentialValueResponse(boardId: string, type: string): Promise<Response> {
-    const value = await this.getCredentialValue(boardId, type);
+  async getCredentialValueResponse(projectId: string, type: string): Promise<Response> {
+    const value = await this.getCredentialValue(projectId, type);
     if (!value) {
       return jsonResponse({
         success: false,
@@ -218,10 +218,10 @@ export class CredentialService {
   /**
    * Get credential by ID with decrypted value and metadata
    */
-  async getCredentialById(boardId: string, credentialId: string): Promise<Response> {
+  async getCredentialById(projectId: string, credentialId: string): Promise<Response> {
     const credential = this.sql.exec(
-      'SELECT encrypted_value, metadata FROM board_credentials WHERE board_id = ? AND id = ?',
-      boardId,
+      'SELECT encrypted_value, metadata FROM project_credentials WHERE project_id = ? AND id = ?',
+      projectId,
       credentialId
     ).toArray()[0] as { encrypted_value: string; metadata: string | null } | undefined;
 
@@ -241,10 +241,10 @@ export class CredentialService {
   /**
    * Get full credential by type with decrypted value and metadata
    */
-  async getCredentialFullResponse(boardId: string, type: string): Promise<Response> {
+  async getCredentialFullResponse(projectId: string, type: string): Promise<Response> {
     const credential = this.sql.exec(
-      'SELECT encrypted_value, metadata FROM board_credentials WHERE board_id = ? AND type = ?',
-      boardId,
+      'SELECT encrypted_value, metadata FROM project_credentials WHERE project_id = ? AND type = ?',
+      projectId,
       type
     ).toArray()[0] as { encrypted_value: string; metadata: string | null } | undefined;
 
@@ -268,7 +268,7 @@ export class CredentialService {
    * Update credential value (for token refresh)
    */
   async updateCredentialValue(
-    boardId: string,
+    projectId: string,
     type: string,
     newValue: string,
     metadataUpdates?: Record<string, unknown>
@@ -278,8 +278,8 @@ export class CredentialService {
 
     if (metadataUpdates) {
       const existing = this.sql.exec(
-        'SELECT metadata FROM board_credentials WHERE board_id = ? AND type = ?',
-        boardId,
+        'SELECT metadata FROM project_credentials WHERE project_id = ? AND type = ?',
+        projectId,
         type
       ).toArray()[0] as { metadata: string | null } | undefined;
 
@@ -287,19 +287,19 @@ export class CredentialService {
       const mergedMetadata = { ...existingMetadata, ...metadataUpdates };
 
       this.sql.exec(
-        'UPDATE board_credentials SET encrypted_value = ?, metadata = ?, updated_at = ? WHERE board_id = ? AND type = ?',
+        'UPDATE project_credentials SET encrypted_value = ?, metadata = ?, updated_at = ? WHERE project_id = ? AND type = ?',
         encryptedValue,
         JSON.stringify(mergedMetadata),
         now,
-        boardId,
+        projectId,
         type
       );
     } else {
       this.sql.exec(
-        'UPDATE board_credentials SET encrypted_value = ?, updated_at = ? WHERE board_id = ? AND type = ?',
+        'UPDATE project_credentials SET encrypted_value = ?, updated_at = ? WHERE project_id = ? AND type = ?',
         encryptedValue,
         now,
-        boardId,
+        projectId,
         type
       );
     }
@@ -312,18 +312,18 @@ export class CredentialService {
    */
   getCredentialRowById(credentialId: string): { encrypted_value: string; metadata?: string } | undefined {
     return this.sql.exec(
-      'SELECT encrypted_value, metadata FROM board_credentials WHERE id = ?',
+      'SELECT encrypted_value, metadata FROM project_credentials WHERE id = ?',
       credentialId
     ).toArray()[0] as { encrypted_value: string; metadata?: string } | undefined;
   }
 
   /**
-   * Find credential ID by board and type
+   * Find credential ID by project and type
    */
-  findCredentialId(boardId: string, type: string): string | undefined {
+  findCredentialId(projectId: string, type: string): string | undefined {
     const row = this.sql.exec(
-      'SELECT id FROM board_credentials WHERE board_id = ? AND type = ?',
-      boardId,
+      'SELECT id FROM project_credentials WHERE project_id = ? AND type = ?',
+      projectId,
       type
     ).toArray()[0] as { id: string } | undefined;
     return row?.id;

@@ -17,7 +17,9 @@ export async function handleGeneratePlan(
   env: Env,
   boardStub: BoardDOStub,
   boardId: string,
-  taskId: string
+  taskId: string,
+  userId: string,
+  agentId?: string
 ): Promise<Response> {
   if (!env.AGENT_WORKFLOW) {
     return jsonResponse({
@@ -27,7 +29,7 @@ export async function handleGeneratePlan(
   }
 
   // Get the task details
-  let task: { id: string; boardId: string; title: string; description?: string | null };
+  let task: { id: string; projectId?: string | null; title: string; description?: string | null };
   try {
     task = await boardStub.getTask(taskId);
   } catch {
@@ -37,13 +39,29 @@ export async function handleGeneratePlan(
     }, 404);
   }
 
+  // If an agent is specified, look up its system prompt
+  let customSystemPrompt: string | undefined;
+  let agentModel: string | undefined;
+  if (agentId) {
+    try {
+      const agent = await boardStub.getAgent(agentId);
+      if (agent.enabled) {
+        customSystemPrompt = agent.systemPrompt;
+        agentModel = agent.model;
+      }
+    } catch {
+      // Agent not found, continue with default
+      logger.workflow.warn('Custom agent not found', { agentId });
+    }
+  }
+
   // Create a plan record with status 'executing' (skip planning/draft)
   const planId = crypto.randomUUID();
 
   try {
     await boardStub.createWorkflowPlan(taskId, {
       id: planId,
-      boardId,
+      projectId: boardId,
       // status is set to 'executing' by default
     });
   } catch {
@@ -53,14 +71,15 @@ export async function handleGeneratePlan(
     }, 500);
   }
 
-  // Fetch Anthropic API key
-  const anthropicApiKey = await boardStub.getCredentialValue(boardId, CREDENTIAL_TYPES.ANTHROPIC_API_KEY);
+  // Fetch Anthropic API key - prefer env variable, fall back to stored credential
+  const anthropicApiKey = env.ANTHROPIC_API_KEY ||
+    await boardStub.getCredentialValue(boardId, CREDENTIAL_TYPES.ANTHROPIC_API_KEY);
 
   if (!anthropicApiKey) {
-    await boardStub.updateWorkflowPlan(planId, { status: 'failed', result: { error: 'Anthropic API key not configured' } });
+    await boardStub.updateWorkflowPlan(planId, { status: 'failed', result: { error: 'Anthropic API key not configured. Set ANTHROPIC_API_KEY in your environment.' } });
     return jsonResponse({
       success: false,
-      error: { code: 'NO_ANTHROPIC', message: 'Anthropic API key not configured' },
+      error: { code: 'NO_ANTHROPIC', message: 'Anthropic API key not configured. Set ANTHROPIC_API_KEY in your environment.' },
     }, 400);
   }
 
@@ -74,9 +93,12 @@ export async function handleGeneratePlan(
     const workflowParams: AgentWorkflowParams = {
       planId,
       taskId,
-      boardId,
+      projectId: boardId,
+      userId,
       taskDescription,
       anthropicApiKey,
+      customSystemPrompt,
+      agentModel,
     };
 
     await env.AGENT_WORKFLOW.create({
@@ -117,7 +139,7 @@ export async function handleResolveCheckpoint(
   }
 
   // Get the plan
-  let plan: { id: string; taskId: string; boardId: string; status: string };
+  let plan: { id: string; taskId: string; projectId: string; status: string };
   try {
     plan = await boardStub.getWorkflowPlan(planId);
   } catch {

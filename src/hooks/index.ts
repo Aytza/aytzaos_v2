@@ -27,3 +27,8 @@ export {
   type PendingUrl,
   type UseUrlDetectionResult,
 } from './useUrlDetection';
+
+export {
+  useTaskWorkflow,
+  type TaskMode,
+} from './useTaskWorkflow';

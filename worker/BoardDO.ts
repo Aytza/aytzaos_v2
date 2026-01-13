@@ -12,7 +12,7 @@ import {
 // TYPE EXPORTS FOR RPC
 // ============================================
 
-export interface Board {
+export interface Project {
   id: string;
   name: string;
   ownerId: string;
@@ -24,15 +24,16 @@ export interface Board {
 
 export interface Column {
   id: string;
-  boardId: string;
+  projectId: string;
   name: string;
   position: number;
 }
 
 export interface Task {
   id: string;
-  columnId: string;
-  boardId: string;
+  columnId: string | null;
+  projectId: string | null;
+  userId: string | null;
   title: string;
   description: string | null;
   priority: string;
@@ -45,7 +46,7 @@ export interface Task {
 export interface WorkflowPlan {
   id: string;
   taskId: string;
-  boardId: string;
+  projectId: string;
   status: string;
   summary: string | null;
   generatedCode: string | null;
@@ -59,7 +60,7 @@ export interface WorkflowPlan {
 
 export interface Credential {
   id: string;
-  boardId: string;
+  projectId: string;
   type: string;
   name: string;
   createdAt: string;
@@ -68,7 +69,7 @@ export interface Credential {
 
 export interface MCPServer {
   id: string;
-  boardId: string;
+  projectId: string;
   name: string;
   type: string;
   endpoint: string | null;
@@ -91,12 +92,28 @@ export interface MCPTool {
   approvalRequiredFields: string[] | null;
 }
 
+export interface Agent {
+  id: string;
+  projectId: string | null;
+  name: string;
+  description: string | null;
+  systemPrompt: string;
+  model: string;
+  icon: string | null;
+  enabled: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 // ============================================
 // BOARD DURABLE OBJECT
 // ============================================
 
 /**
- * BoardDO - Durable Object for board state management
+ * BoardDO - Durable Object for project state management
+ *
+ * Note: The class is still called BoardDO for Cloudflare binding stability,
+ * but the data model uses "projects" terminology.
  *
  * Uses RPC for all operations except WebSocket (which requires fetch)
  */
@@ -149,7 +166,7 @@ export class BoardDO extends DurableObject<Env> {
     this.workflowService = new WorkflowService(
       this.sql,
       generateId,
-      (boardId, type, data) => this.broadcast(boardId, type, data)
+      (projectId, type, data) => this.broadcast(projectId, type, data)
     );
   }
 
@@ -171,9 +188,10 @@ export class BoardDO extends DurableObject<Env> {
     const pair = new WebSocketPair();
     const [client, server] = Object.values(pair);
 
-    const boardId = url.searchParams.get('boardId');
+    // Accept both projectId and boardId for backward compatibility
+    const projectId = url.searchParams.get('projectId') || url.searchParams.get('boardId');
     this.ctx.acceptWebSocket(server);
-    server.serializeAttachment({ boardId });
+    server.serializeAttachment({ projectId });
 
     return new Response(null, { status: 101, webSocket: client });
   }
@@ -195,14 +213,14 @@ export class BoardDO extends DurableObject<Env> {
     // Cleanup handled by runtime
   }
 
-  private broadcast(boardId: string, type: string, data: Record<string, unknown>): void {
+  private broadcast(projectId: string, type: string, data: Record<string, unknown>): void {
     const clients = this.ctx.getWebSockets();
     const message = JSON.stringify({ type, data });
 
     for (const ws of clients) {
       try {
-        const attachment = ws.deserializeAttachment() as { boardId: string } | null;
-        if (attachment?.boardId === boardId) {
+        const attachment = ws.deserializeAttachment() as { projectId: string } | null;
+        if (attachment?.projectId === projectId) {
           ws.send(message);
         }
       } catch {
@@ -212,40 +230,65 @@ export class BoardDO extends DurableObject<Env> {
   }
 
   // ============================================
-  // BOARD RPC METHODS
+  // PROJECT RPC METHODS
   // ============================================
 
-  async initBoard(data: { id: string; name: string; ownerId: string }): Promise<Board> {
-    const response = this.boardService.initBoard(data);
+  async initProject(data: { id: string; name: string; ownerId: string; isUserTasksContainer?: boolean }): Promise<Project> {
+    const response = this.boardService.initProject(data);
     return this.extractData(response);
   }
 
+  // Alias for backward compatibility
+  async initBoard(data: { id: string; name: string; ownerId: string; isUserTasksContainer?: boolean }): Promise<Project> {
+    return this.initProject(data);
+  }
+
+  async getProjectInfo(): Promise<{ id: string; name: string; ownerId: string }> {
+    const response = this.boardService.getProjectInfo();
+    return this.extractData(response);
+  }
+
+  // Alias for backward compatibility
   async getBoardInfo(): Promise<{ id: string; name: string; ownerId: string }> {
-    const response = this.boardService.getBoardInfo();
+    return this.getProjectInfo();
+  }
+
+  async getProject(projectId: string): Promise<Project> {
+    const response = this.boardService.getProject(projectId);
     return this.extractData(response);
   }
 
-  async getBoard(boardId: string): Promise<Board> {
-    const response = this.boardService.getBoard(boardId);
+  // Alias for backward compatibility
+  async getBoard(projectId: string): Promise<Project> {
+    return this.getProject(projectId);
+  }
+
+  async updateProject(projectId: string, data: { name?: string }): Promise<Project> {
+    const response = this.boardService.updateProject(projectId, data);
     return this.extractData(response);
   }
 
-  async updateBoard(boardId: string, data: { name?: string }): Promise<Board> {
-    const response = this.boardService.updateBoard(boardId, data);
+  // Alias for backward compatibility
+  async updateBoard(projectId: string, data: { name?: string }): Promise<Project> {
+    return this.updateProject(projectId, data);
+  }
+
+  async deleteProject(projectId: string): Promise<{ success: boolean }> {
+    const response = this.boardService.deleteProject(projectId);
     return this.extractData(response);
   }
 
-  async deleteBoard(boardId: string): Promise<{ success: boolean }> {
-    const response = this.boardService.deleteBoard(boardId);
-    return this.extractData(response);
+  // Alias for backward compatibility
+  async deleteBoard(projectId: string): Promise<{ success: boolean }> {
+    return this.deleteProject(projectId);
   }
 
   // ============================================
   // COLUMN RPC METHODS
   // ============================================
 
-  async createColumn(boardId: string, data: { name: string }): Promise<Column> {
-    const response = this.boardService.createColumn(boardId, data);
+  async createColumn(projectId: string, data: { name: string }): Promise<Column> {
+    const response = this.boardService.createColumn(projectId, data);
     return this.extractData(response);
   }
 
@@ -264,8 +307,9 @@ export class BoardDO extends DurableObject<Env> {
   // ============================================
 
   async createTask(data: {
-    columnId: string;
-    boardId: string;
+    columnId?: string;
+    projectId?: string;
+    userId?: string;
     title: string;
     description?: string;
     priority?: string;
@@ -277,6 +321,11 @@ export class BoardDO extends DurableObject<Env> {
 
   async getTask(taskId: string): Promise<Task> {
     const response = this.boardService.getTask(taskId);
+    return this.extractData(response);
+  }
+
+  async getTasks(): Promise<Task[]> {
+    const response = this.boardService.getTasks();
     return this.extractData(response);
   }
 
@@ -304,48 +353,48 @@ export class BoardDO extends DurableObject<Env> {
   // CREDENTIAL RPC METHODS
   // ============================================
 
-  async getCredentials(boardId: string): Promise<Credential[]> {
-    const response = this.credentialService.getCredentials(boardId);
+  async getCredentials(projectId: string): Promise<Credential[]> {
+    const response = this.credentialService.getCredentials(projectId);
     return this.extractData(response);
   }
 
-  async createCredential(boardId: string, data: {
+  async createCredential(projectId: string, data: {
     type: string;
     name: string;
     value: string;
     metadata?: object;
   }): Promise<Credential> {
-    const response = await this.credentialService.createCredential(boardId, data);
+    const response = await this.credentialService.createCredential(projectId, data);
     return this.extractData(response);
   }
 
-  async deleteCredential(boardId: string, credentialId: string): Promise<{ success: boolean }> {
-    const response = this.credentialService.deleteCredential(boardId, credentialId);
+  async deleteCredential(projectId: string, credentialId: string): Promise<{ success: boolean }> {
+    const response = this.credentialService.deleteCredential(projectId, credentialId);
     return this.extractData(response);
   }
 
-  async getCredentialValue(boardId: string, type: string): Promise<string | null> {
-    return this.credentialService.getCredentialValue(boardId, type);
+  async getCredentialValue(projectId: string, type: string): Promise<string | null> {
+    return this.credentialService.getCredentialValue(projectId, type);
   }
 
-  async getCredentialFull(boardId: string, type: string): Promise<{ value: string; metadata: object } | null> {
-    const response = await this.credentialService.getCredentialFullResponse(boardId, type);
+  async getCredentialFull(projectId: string, type: string): Promise<{ value: string; metadata: object } | null> {
+    const response = await this.credentialService.getCredentialFullResponse(projectId, type);
     const result = await response.json() as { success: boolean; data?: { value: string; metadata: object } };
     return result.success ? result.data! : null;
   }
 
   async updateCredentialValue(
-    boardId: string,
+    projectId: string,
     type: string,
     value: string,
     metadata?: Record<string, unknown>
   ): Promise<{ success: boolean }> {
-    const response = await this.credentialService.updateCredentialValue(boardId, type, value, metadata);
+    const response = await this.credentialService.updateCredentialValue(projectId, type, value, metadata);
     return this.extractData(response);
   }
 
-  async getCredentialById(boardId: string, credentialId: string): Promise<{ value: string; metadata: object | null } | null> {
-    const response = await this.credentialService.getCredentialById(boardId, credentialId);
+  async getCredentialById(projectId: string, credentialId: string): Promise<{ value: string; metadata: object | null } | null> {
+    const response = await this.credentialService.getCredentialById(projectId, credentialId);
     const result = await response.json() as { success: boolean; data?: { value: string; metadata: object | null } };
     return result.success ? result.data! : null;
   }
@@ -360,14 +409,19 @@ export class BoardDO extends DurableObject<Env> {
     return result.data;
   }
 
-  async getBoardWorkflowPlans(boardId: string): Promise<WorkflowPlan[]> {
-    const response = this.workflowService.getBoardWorkflowPlans(boardId);
+  async getProjectWorkflowPlans(projectId: string): Promise<WorkflowPlan[]> {
+    const response = this.workflowService.getProjectWorkflowPlans(projectId);
     return this.extractData(response);
+  }
+
+  // Alias for backward compatibility
+  async getBoardWorkflowPlans(projectId: string): Promise<WorkflowPlan[]> {
+    return this.getProjectWorkflowPlans(projectId);
   }
 
   async createWorkflowPlan(taskId: string, data: {
     id?: string;
-    boardId: string;
+    projectId: string;
     summary?: string;
     generatedCode?: string;
     steps?: object[];
@@ -434,16 +488,16 @@ export class BoardDO extends DurableObject<Env> {
     return this.workflowService.addWorkflowLog(planId, level, message, stepId, metadata);
   }
 
-  broadcastStreamChunk(boardId: string, planId: string, turnIndex: number, text: string): void {
-    this.broadcast(boardId, 'workflow_stream', { planId, turnIndex, text });
+  broadcastStreamChunk(projectId: string, planId: string, turnIndex: number, text: string): void {
+    this.broadcast(projectId, 'workflow_stream', { planId, turnIndex, text });
   }
 
   // ============================================
   // MCP SERVER RPC METHODS
   // ============================================
 
-  async getMCPServers(boardId: string): Promise<MCPServer[]> {
-    const response = this.mcpService.getMCPServers(boardId);
+  async getMCPServers(projectId: string): Promise<MCPServer[]> {
+    const response = this.mcpService.getMCPServers(projectId);
     return this.extractData(response);
   }
 
@@ -452,7 +506,7 @@ export class BoardDO extends DurableObject<Env> {
     return this.extractData(response);
   }
 
-  async createMCPServer(boardId: string, data: {
+  async createMCPServer(projectId: string, data: {
     name: string;
     type: 'remote' | 'hosted';
     endpoint?: string;
@@ -462,15 +516,15 @@ export class BoardDO extends DurableObject<Env> {
     transportType?: 'streamable-http' | 'sse';
     urlPatterns?: Array<{ pattern: string; type: string; fetchTool: string }>;
   }): Promise<MCPServer> {
-    const response = this.mcpService.createMCPServer(boardId, data);
+    const response = this.mcpService.createMCPServer(projectId, data);
     return this.extractData(response);
   }
 
-  async createAccountMCP(boardId: string, data: {
+  async createAccountMCP(projectId: string, data: {
     accountId: string;
     mcpId: string;
   }): Promise<MCPServer> {
-    const response = await this.mcpService.createAccountMCP(boardId, data);
+    const response = await this.mcpService.createAccountMCP(projectId, data);
     return this.extractData(response);
   }
 
@@ -547,7 +601,7 @@ export class BoardDO extends DurableObject<Env> {
   // OTHER RPC METHODS
   // ============================================
 
-  async getGitHubRepos(boardId: string): Promise<Array<{
+  async getGitHubRepos(projectId: string): Promise<Array<{
     id: number;
     name: string;
     fullName: string;
@@ -556,18 +610,61 @@ export class BoardDO extends DurableObject<Env> {
     defaultBranch: string;
     description: string | null;
   }>> {
-    const response = await this.boardService.getGitHubRepos(boardId);
+    const response = await this.boardService.getGitHubRepos(projectId);
     return this.extractData(response);
   }
 
-  async getLinkMetadata(boardId: string, data: { url: string }): Promise<{
+  async getLinkMetadata(projectId: string, data: { url: string }): Promise<{
     type: string;
     title: string;
     id: string;
   } | null> {
-    const response = await this.boardService.getLinkMetadata(boardId, data);
+    const response = await this.boardService.getLinkMetadata(projectId, data);
     const result = await response.json() as { success: boolean; data: object | null };
     return result.data as { type: string; title: string; id: string } | null;
+  }
+
+  // ============================================
+  // AGENT RPC METHODS
+  // ============================================
+
+  async getAgents(projectId: string | null): Promise<Agent[]> {
+    const response = this.boardService.getAgents(projectId);
+    return this.extractData(response);
+  }
+
+  async getAgent(agentId: string): Promise<Agent> {
+    const response = this.boardService.getAgent(agentId);
+    return this.extractData(response);
+  }
+
+  async createAgent(data: {
+    projectId?: string;
+    name: string;
+    description?: string;
+    systemPrompt: string;
+    model?: string;
+    icon?: string;
+  }): Promise<Agent> {
+    const response = this.boardService.createAgent(data);
+    return this.extractData(response);
+  }
+
+  async updateAgent(agentId: string, data: {
+    name?: string;
+    description?: string;
+    systemPrompt?: string;
+    model?: string;
+    icon?: string;
+    enabled?: boolean;
+  }): Promise<Agent> {
+    const response = this.boardService.updateAgent(agentId, data);
+    return this.extractData(response);
+  }
+
+  async deleteAgent(agentId: string): Promise<{ success: boolean }> {
+    const response = this.boardService.deleteAgent(agentId);
+    return this.extractData(response);
   }
 
   // ============================================
