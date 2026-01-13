@@ -1,20 +1,41 @@
-import { useState, useEffect, useRef } from 'react';
-import { Button, Modal, Input, RichTextEditor } from '../common';
-import type { Task, TaskPriority } from '../../types';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { Button, Modal, Input, RichTextEditor, AgentIcon } from '../common';
+import { AgentSection } from '../Task/AgentSection';
+import { WorkflowProgress } from '../Workflow';
+import { getApprovalView } from '../Approval';
+import { useTaskWorkflow } from '../../hooks/useTaskWorkflow';
+import type { Task, TaskPriority, WorkflowArtifact } from '../../types';
 import * as api from '../../api/client';
 import './Tasks.css';
+
+type TaskModalView = 'main' | 'checkpoint-review' | 'email-view';
+type ModalMode = 'create' | 'edit';
 
 export function Tasks() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [showEditModal, setShowEditModal] = useState(false);
+  const [showModal, setShowModal] = useState(false);
+  const [modalMode, setModalMode] = useState<ModalMode>('create');
   const [editingTask, setEditingTask] = useState<Task | null>(null);
-  const [newTaskTitle, setNewTaskTitle] = useState('');
-  const [newTaskDescription, setNewTaskDescription] = useState('');
-  const [newTaskPriority, setNewTaskPriority] = useState<TaskPriority>('medium');
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+
+  // Form state (shared between create and edit)
+  const [taskTitle, setTaskTitle] = useState('');
+  const [taskDescription, setTaskDescription] = useState('');
+  const [taskPriority, setTaskPriority] = useState<TaskPriority>('medium');
+
+  // UI state for the modal
+  const [currentView, setCurrentView] = useState<TaskModalView>('main');
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [selectedEmailArtifact, setSelectedEmailArtifact] = useState<WorkflowArtifact | null>(null);
+
+  // Use the shared workflow hook - handles all workflow state and API calls
+  const workflow = useTaskWorkflow({
+    taskId: editingTask?.id || '',
+    mode: 'standalone',
+  });
 
   // Load tasks on mount
   useEffect(() => {
@@ -32,6 +53,14 @@ export function Tasks() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // Load workflow plan when opening edit modal
+  useEffect(() => {
+    if (showModal && modalMode === 'edit' && editingTask) {
+      workflow.loadWorkflowPlan();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showModal, modalMode, editingTask?.id, workflow.loadWorkflowPlan]);
+
   const loadTasks = async () => {
     setLoading(true);
     const result = await api.getStandaloneTasks();
@@ -41,36 +70,88 @@ export function Tasks() {
     setLoading(false);
   };
 
-  const handleCreateTask = async () => {
-    if (newTaskTitle.trim()) {
-      const result = await api.createStandaloneTask({
-        title: newTaskTitle.trim(),
-        description: newTaskDescription.trim() || undefined,
-        priority: newTaskPriority,
-      });
-      if (result.success && result.data) {
-        setTasks((prev) => [...prev, result.data!]);
-        resetCreateForm();
-        setShowCreateModal(false);
+  const resetForm = useCallback(() => {
+    setTaskTitle('');
+    setTaskDescription('');
+    setTaskPriority('medium');
+    setEditingTask(null);
+    setCurrentView('main');
+    setConfirmingDelete(false);
+    setSelectedEmailArtifact(null);
+  }, []);
+
+  const openCreateModal = () => {
+    resetForm();
+    setModalMode('create');
+    setShowModal(true);
+    workflow.clearError();
+  };
+
+  const openEditModal = (task: Task) => {
+    setEditingTask({ ...task });
+    setTaskTitle(task.title);
+    setTaskDescription(task.description || '');
+    setTaskPriority(task.priority);
+    setModalMode('edit');
+    setShowModal(true);
+    setMenuOpenId(null);
+    setCurrentView('main');
+    setConfirmingDelete(false);
+    setSelectedEmailArtifact(null);
+    workflow.clearError();
+  };
+
+  const closeModal = () => {
+    setShowModal(false);
+    resetForm();
+  };
+
+  const handleCreateTask = async (runAgent?: boolean, agentId?: string) => {
+    if (!taskTitle.trim()) return;
+
+    setIsSaving(true);
+    const result = await api.createStandaloneTask({
+      title: taskTitle.trim(),
+      description: taskDescription.trim() || undefined,
+      priority: taskPriority,
+    });
+
+    if (result.success && result.data) {
+      setTasks((prev) => [...prev, result.data!]);
+
+      if (runAgent) {
+        // Switch to edit mode with the new task to run the agent
+        setEditingTask(result.data);
+        setModalMode('edit');
+        setIsSaving(false);
+        // Start the workflow after a brief delay to let state settle
+        setTimeout(() => {
+          workflow.startWorkflow(agentId);
+        }, 100);
+      } else {
+        closeModal();
       }
     }
+    setIsSaving(false);
   };
 
   const handleUpdateTask = async () => {
-    if (editingTask && editingTask.title.trim()) {
-      const result = await api.updateStandaloneTask(editingTask.id, {
-        title: editingTask.title,
-        description: editingTask.description || undefined,
-        priority: editingTask.priority,
-      });
-      if (result.success && result.data) {
-        setTasks((prev) =>
-          prev.map((t) => (t.id === editingTask.id ? result.data! : t))
-        );
-        setEditingTask(null);
-        setShowEditModal(false);
-      }
+    if (!editingTask || !taskTitle.trim()) return;
+
+    setIsSaving(true);
+    const result = await api.updateStandaloneTask(editingTask.id, {
+      title: taskTitle.trim(),
+      description: taskDescription.trim() || undefined,
+      priority: taskPriority,
+    });
+
+    if (result.success && result.data) {
+      setTasks((prev) =>
+        prev.map((t) => (t.id === editingTask.id ? result.data! : t))
+      );
+      closeModal();
     }
+    setIsSaving(false);
   };
 
   const handleDeleteTask = async (taskId: string) => {
@@ -78,19 +159,47 @@ export function Tasks() {
     if (result.success) {
       setTasks((prev) => prev.filter((t) => t.id !== taskId));
       setMenuOpenId(null);
+      closeModal();
     }
   };
 
-  const resetCreateForm = () => {
-    setNewTaskTitle('');
-    setNewTaskDescription('');
-    setNewTaskPriority('medium');
+  const handleStartAgent = async (agentId?: string) => {
+    if (modalMode === 'create') {
+      // Create the task first, then run the agent
+      await handleCreateTask(true, agentId);
+    } else if (editingTask) {
+      // Save any pending changes first
+      const originalTask = tasks.find(t => t.id === editingTask.id);
+      const hasChanges = taskDescription !== (originalTask?.description || '') ||
+                         taskTitle !== originalTask?.title ||
+                         taskPriority !== originalTask?.priority;
+
+      if (hasChanges) {
+        await api.updateStandaloneTask(editingTask.id, {
+          title: taskTitle,
+          description: taskDescription,
+          priority: taskPriority,
+        });
+      }
+
+      await workflow.startWorkflow(agentId);
+    }
   };
 
-  const openEditModal = (task: Task) => {
-    setEditingTask({ ...task });
-    setShowEditModal(true);
-    setMenuOpenId(null);
+  // Handlers for checkpoint approval
+  const handleApproveCheckpoint = async (responseData?: Record<string, unknown>) => {
+    await workflow.resolveCheckpoint('approve', { data: responseData });
+    setCurrentView('main');
+  };
+
+  const handleRequestChanges = async (feedback: string) => {
+    await workflow.resolveCheckpoint('request_changes', { feedback });
+    setCurrentView('main');
+  };
+
+  const handleCancelCheckpoint = async () => {
+    await workflow.resolveCheckpoint('cancel');
+    setCurrentView('main');
   };
 
   const getPriorityColor = (priority: TaskPriority) => {
@@ -104,12 +213,185 @@ export function Tasks() {
     }
   };
 
+  const getModalTitle = () => {
+    if (currentView === 'checkpoint-review') return 'Approval Required';
+    if (currentView === 'email-view') return selectedEmailArtifact?.title || 'Sent Email';
+    return modalMode === 'create' ? 'New Task' : 'Edit Task';
+  };
+
+  const showBackButton = currentView === 'checkpoint-review' || currentView === 'email-view';
+
+  const renderModalContent = () => {
+    // Checkpoint Review
+    if (currentView === 'checkpoint-review' && workflow.workflowPlan) {
+      const checkpointData = workflow.workflowPlan.checkpointData as {
+        tool?: string;
+        action?: string;
+        data?: Record<string, unknown>;
+      } | undefined;
+
+      const toolName = checkpointData?.tool || '';
+      const ApprovalView = getApprovalView(toolName);
+
+      let dataObj: Record<string, unknown> = {};
+      if (checkpointData?.data) {
+        if (typeof checkpointData.data === 'string') {
+          try {
+            dataObj = JSON.parse(checkpointData.data);
+          } catch {
+            dataObj = {};
+          }
+        } else {
+          dataObj = checkpointData.data;
+        }
+      }
+
+      return (
+        <ApprovalView
+          tool={toolName}
+          action={checkpointData?.action || ''}
+          data={dataObj}
+          onApprove={handleApproveCheckpoint}
+          onRequestChanges={handleRequestChanges}
+          onCancel={handleCancelCheckpoint}
+          isLoading={workflow.isRespondingToCheckpoint}
+        />
+      );
+    }
+
+    // Email View
+    if (currentView === 'email-view' && selectedEmailArtifact?.content) {
+      const { to, cc, bcc, subject, body, sentAt } = selectedEmailArtifact.content;
+      return (
+        <div className="email-viewer-content">
+          {to && <div><strong>To:</strong> {to}</div>}
+          {cc && <div><strong>CC:</strong> {cc}</div>}
+          {bcc && <div><strong>BCC:</strong> {bcc}</div>}
+          {subject && <div><strong>Subject:</strong> {subject}</div>}
+          {sentAt && <div><strong>Sent:</strong> {new Date(sentAt).toLocaleString()}</div>}
+          {body && (
+            <pre style={{ whiteSpace: 'pre-wrap', fontFamily: 'inherit', marginTop: 'var(--spacing-md)' }}>
+              {body}
+            </pre>
+          )}
+        </div>
+      );
+    }
+
+    // Main view (create or edit)
+    const isRunning = workflow.isGeneratingPlan;
+    const hasWorkflow = modalMode === 'edit' && workflow.workflowPlan;
+    const canRunAgent = taskDescription.trim().length > 0;
+
+    return (
+      <>
+        <div className="modal-form">
+          <Input
+            label="Title"
+            placeholder="What needs to be done?"
+            value={taskTitle}
+            onChange={(e) => setTaskTitle(e.target.value)}
+            autoFocus
+          />
+          <RichTextEditor
+            label="Description / Instructions"
+            placeholder="Describe the task or provide instructions for the agent..."
+            value={taskDescription}
+            onChange={setTaskDescription}
+            rows={4}
+          />
+          <div className="form-field">
+            <label className="form-label">Priority</label>
+            <select
+              className="form-select"
+              value={taskPriority}
+              onChange={(e) => setTaskPriority(e.target.value as TaskPriority)}
+            >
+              <option value="low">Low</option>
+              <option value="medium">Medium</option>
+              <option value="high">High</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Agent Section */}
+        <div className="task-modal-agent">
+          {workflow.error && (
+            <div className="task-modal-error">{workflow.error}</div>
+          )}
+
+          {hasWorkflow ? (
+            <div className="task-modal-workflow">
+              <WorkflowProgress
+                plan={workflow.workflowPlan!}
+                onCancel={workflow.cancelWorkflow}
+                onDismiss={workflow.dismissWorkflow}
+                onReviewCheckpoint={() => setCurrentView('checkpoint-review')}
+                onViewEmail={(artifact) => {
+                  setSelectedEmailArtifact(artifact);
+                  setCurrentView('email-view');
+                }}
+                customLogs={{
+                  logs: workflow.workflowLogs,
+                  fetchLogs: workflow.loadWorkflowPlan,
+                }}
+              />
+            </div>
+          ) : (
+            <AgentSection
+              onRun={handleStartAgent}
+              disabled={!canRunAgent || isSaving}
+              isRunning={isRunning}
+            />
+          )}
+
+          {!canRunAgent && !hasWorkflow && (
+            <p className="agent-hint">Add a description to enable the agent</p>
+          )}
+        </div>
+
+        <div className="modal-actions-split">
+          <div className={`delete-action ${confirmingDelete ? 'confirming' : ''}`}>
+            {modalMode === 'edit' && (
+              confirmingDelete ? (
+                <>
+                  <Button variant="danger" onClick={() => editingTask && handleDeleteTask(editingTask.id)}>
+                    Confirm Delete
+                  </Button>
+                  <Button variant="ghost" onClick={() => setConfirmingDelete(false)}>
+                    Cancel
+                  </Button>
+                </>
+              ) : (
+                <Button variant="ghost" onClick={() => setConfirmingDelete(true)}>
+                  Delete
+                </Button>
+              )
+            )}
+          </div>
+          <div className="modal-actions-right">
+            <Button variant="ghost" onClick={closeModal}>
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              onClick={modalMode === 'create' ? () => handleCreateTask(false) : handleUpdateTask}
+              disabled={!taskTitle.trim() || isSaving}
+            >
+              {isSaving ? 'Saving...' : modalMode === 'create' ? 'Create Task' : 'Save'}
+            </Button>
+          </div>
+        </div>
+      </>
+    );
+  };
+
   return (
     <div className="tasks-page">
       <div className="tasks-container">
         <div className="tasks-header">
           <h1 className="tasks-title">&gt; My Tasks</h1>
-          <Button variant="primary" onClick={() => setShowCreateModal(true)}>
+          <Button variant="primary" onClick={openCreateModal}>
             + New Task
           </Button>
         </div>
@@ -118,8 +400,12 @@ export function Tasks() {
           <div className="tasks-loading">Loading tasks...</div>
         ) : tasks.length === 0 ? (
           <div className="tasks-empty">
-            <p>No tasks yet</p>
-            <Button variant="ghost" onClick={() => setShowCreateModal(true)}>
+            <div className="tasks-empty-icon">
+              <AgentIcon size={48} />
+            </div>
+            <h2>No tasks yet</h2>
+            <p>Create a task and let the AI agent handle it for you</p>
+            <Button variant="primary" onClick={openCreateModal}>
               Create your first task
             </Button>
           </div>
@@ -134,7 +420,15 @@ export function Tasks() {
               >
                 <div className="task-item-main">
                   <span className={`task-priority-dot ${getPriorityColor(task.priority)}`} />
-                  <span className="task-item-title">{task.title}</span>
+                  <div className="task-item-content">
+                    <span className="task-item-title">{task.title}</span>
+                    {task.description && (
+                      <span className="task-item-description">
+                        {task.description.replace(/<[^>]*>/g, '').slice(0, 80)}
+                        {task.description.length > 80 ? '...' : ''}
+                      </span>
+                    )}
+                  </div>
                 </div>
                 <div className="task-item-right">
                   <span className="task-item-date">
@@ -162,117 +456,18 @@ export function Tasks() {
         )}
       </div>
 
-      {/* Create Task Modal */}
+      {/* Unified Task Modal */}
       <Modal
-        isOpen={showCreateModal}
-        onClose={() => { setShowCreateModal(false); resetCreateForm(); }}
-        title="Create Task"
-        width="md"
+        isOpen={showModal}
+        onClose={closeModal}
+        title={getModalTitle()}
+        width="lg"
+        showBackButton={showBackButton}
+        onBack={() => setCurrentView('main')}
       >
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            handleCreateTask();
-          }}
-        >
-          <div className="modal-form">
-            <Input
-              label="Title"
-              placeholder="What needs to be done?"
-              value={newTaskTitle}
-              onChange={(e) => setNewTaskTitle(e.target.value)}
-              autoFocus
-            />
-            <RichTextEditor
-              label="Description (optional)"
-              placeholder="Add details or instructions..."
-              value={newTaskDescription}
-              onChange={setNewTaskDescription}
-              rows={3}
-            />
-            <div className="form-field">
-              <label className="form-label">Priority</label>
-              <select
-                className="form-select"
-                value={newTaskPriority}
-                onChange={(e) => setNewTaskPriority(e.target.value as TaskPriority)}
-              >
-                <option value="low">Low</option>
-                <option value="medium">Medium</option>
-                <option value="high">High</option>
-              </select>
-            </div>
-            <div className="modal-actions">
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={() => { setShowCreateModal(false); resetCreateForm(); }}
-              >
-                Cancel
-              </Button>
-              <Button type="submit" variant="primary" disabled={!newTaskTitle.trim()}>
-                Create Task
-              </Button>
-            </div>
-          </div>
-        </form>
-      </Modal>
-
-      {/* Edit Task Modal */}
-      <Modal
-        isOpen={showEditModal}
-        onClose={() => { setShowEditModal(false); setEditingTask(null); }}
-        title="Edit Task"
-        width="md"
-      >
-        {editingTask && (
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              handleUpdateTask();
-            }}
-          >
-            <div className="modal-form">
-              <Input
-                label="Title"
-                value={editingTask.title}
-                onChange={(e) => setEditingTask({ ...editingTask, title: e.target.value })}
-                autoFocus
-              />
-              <RichTextEditor
-                label="Description"
-                placeholder="Add details or instructions..."
-                value={editingTask.description || ''}
-                onChange={(desc) => setEditingTask({ ...editingTask, description: desc })}
-                rows={4}
-              />
-              <div className="form-field">
-                <label className="form-label">Priority</label>
-                <select
-                  className="form-select"
-                  value={editingTask.priority}
-                  onChange={(e) => setEditingTask({ ...editingTask, priority: e.target.value as TaskPriority })}
-                >
-                  <option value="low">Low</option>
-                  <option value="medium">Medium</option>
-                  <option value="high">High</option>
-                </select>
-              </div>
-              <div className="modal-actions">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  onClick={() => { setShowEditModal(false); setEditingTask(null); }}
-                >
-                  Cancel
-                </Button>
-                <Button type="submit" variant="primary" disabled={!editingTask.title.trim()}>
-                  Save Changes
-                </Button>
-              </div>
-            </div>
-          </form>
-        )}
+        <div className={`task-modal ${currentView !== 'main' ? `view-${currentView}` : ''}`}>
+          {renderModalContent()}
+        </div>
       </Modal>
     </div>
   );

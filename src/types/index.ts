@@ -8,6 +8,9 @@ export interface User {
   id: string;
   email: string;
   logoutUrl?: string | null;
+  config?: {
+    anthropicApiKeyConfigured?: boolean;
+  };
 }
 
 export interface Project {

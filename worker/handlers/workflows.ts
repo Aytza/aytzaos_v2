@@ -71,14 +71,15 @@ export async function handleGeneratePlan(
     }, 500);
   }
 
-  // Fetch Anthropic API key
-  const anthropicApiKey = await boardStub.getCredentialValue(boardId, CREDENTIAL_TYPES.ANTHROPIC_API_KEY);
+  // Fetch Anthropic API key - prefer env variable, fall back to stored credential
+  const anthropicApiKey = env.ANTHROPIC_API_KEY ||
+    await boardStub.getCredentialValue(boardId, CREDENTIAL_TYPES.ANTHROPIC_API_KEY);
 
   if (!anthropicApiKey) {
-    await boardStub.updateWorkflowPlan(planId, { status: 'failed', result: { error: 'Anthropic API key not configured' } });
+    await boardStub.updateWorkflowPlan(planId, { status: 'failed', result: { error: 'Anthropic API key not configured. Set ANTHROPIC_API_KEY in your environment.' } });
     return jsonResponse({
       success: false,
-      error: { code: 'NO_ANTHROPIC', message: 'Anthropic API key not configured' },
+      error: { code: 'NO_ANTHROPIC', message: 'Anthropic API key not configured. Set ANTHROPIC_API_KEY in your environment.' },
     }, 400);
   }
 

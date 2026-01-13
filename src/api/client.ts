@@ -715,6 +715,78 @@ export async function generateWorkflowPlan(
 }
 
 // ============================================
+// STANDALONE TASK WORKFLOW
+// ============================================
+
+export async function getStandaloneTaskWorkflowPlan(
+  taskId: string
+): Promise<ApiResponse<WorkflowPlan | null>> {
+  return request<WorkflowPlan | null>(`/tasks/${taskId}/plan`);
+}
+
+export async function generateStandaloneWorkflowPlan(
+  taskId: string,
+  agentId?: string
+): Promise<ApiResponse<WorkflowPlan>> {
+  return request<WorkflowPlan>(`/tasks/${taskId}/generate-plan`, {
+    method: 'POST',
+    body: JSON.stringify({ agentId }),
+  });
+}
+
+export async function getStandaloneWorkflowPlan(
+  taskId: string,
+  planId: string
+): Promise<ApiResponse<WorkflowPlan>> {
+  return request<WorkflowPlan>(`/tasks/${taskId}/plans/${planId}`);
+}
+
+export async function deleteStandaloneWorkflowPlan(
+  taskId: string,
+  planId: string
+): Promise<ApiResponse<void>> {
+  return request<void>(`/tasks/${taskId}/plans/${planId}`, {
+    method: 'DELETE',
+  });
+}
+
+export async function cancelStandaloneWorkflow(
+  taskId: string,
+  planId: string
+): Promise<ApiResponse<WorkflowPlan>> {
+  return request<WorkflowPlan>(`/tasks/${taskId}/plans/${planId}/cancel`, {
+    method: 'POST',
+  });
+}
+
+export async function resolveStandaloneWorkflowCheckpoint(
+  taskId: string,
+  planId: string,
+  data: {
+    action: 'approve' | 'request_changes' | 'cancel';
+    data?: object;
+    feedback?: string;
+  }
+): Promise<ApiResponse<WorkflowPlan>> {
+  return request<WorkflowPlan>(`/tasks/${taskId}/plans/${planId}/checkpoint`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function getStandaloneWorkflowLogs(
+  taskId: string,
+  planId: string,
+  options?: { limit?: number; offset?: number }
+): Promise<ApiResponse<WorkflowLog[]>> {
+  const params = new URLSearchParams();
+  if (options?.limit) params.set('limit', options.limit.toString());
+  if (options?.offset) params.set('offset', options.offset.toString());
+  const query = params.toString() ? `?${params.toString()}` : '';
+  return request<WorkflowLog[]>(`/tasks/${taskId}/plans/${planId}/logs${query}`);
+}
+
+// ============================================
 // LINK METADATA (for link pills)
 // ============================================
 

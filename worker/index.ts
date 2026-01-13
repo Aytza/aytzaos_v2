@@ -15,6 +15,7 @@ import {
   handleGoogleOAuthExchange,
 } from './handlers/oauth';
 import { routeProjectRequest } from './handlers/projects';
+import { handleGeneratePlan, handleResolveCheckpoint, handleCancelWorkflow } from './handlers/workflows';
 import type { BoardDO } from './BoardDO';
 import type { UserDO } from './UserDO';
 
@@ -89,6 +90,9 @@ export default {
             id: user.id,
             email: user.email,
             logoutUrl: (env as AuthEnv).AUTH_MODE === 'access' && (env as AuthEnv).ACCESS_TEAM ? getLogoutUrl((env as AuthEnv).ACCESS_TEAM!) : null,
+            config: {
+              anthropicApiKeyConfigured: !!env.ANTHROPIC_API_KEY,
+            },
           },
         });
       }
@@ -156,14 +160,18 @@ export default {
           }, 400);
         }
 
-        // Check access
-        const accessResult = await userStub.hasAccess(projectId);
+        // Check access - allow user's own task container or projects they have access to
+        const userTasksId = `user-tasks-${user.id}`;
+        const isOwnTaskContainer = projectId === userTasksId;
 
-        if (!accessResult.hasAccess) {
-          return jsonResponse({
-            success: false,
-            error: { code: 'FORBIDDEN', message: 'Access denied to this project' },
-          }, 403);
+        if (!isOwnTaskContainer) {
+          const accessResult = await userStub.hasAccess(projectId);
+          if (!accessResult.hasAccess) {
+            return jsonResponse({
+              success: false,
+              error: { code: 'FORBIDDEN', message: 'Access denied to this project' },
+            }, 403);
+          }
         }
 
         const boardDoId = env.BOARD_DO.idFromName(projectId);
@@ -297,6 +305,98 @@ export default {
             return jsonResponse({
               success: false,
               error: { code: 'DELETE_FAILED', message: 'Failed to delete task' },
+            }, 500);
+          }
+        }
+      }
+
+      // ============================================
+      // STANDALONE TASK WORKFLOW ROUTES
+      // ============================================
+
+      // POST /api/tasks/:taskId/generate-plan - Generate plan for standalone task
+      const standaloneGeneratePlanMatch = url.pathname.match(/^\/api\/tasks\/([^/]+)\/generate-plan$/);
+      if (standaloneGeneratePlanMatch && request.method === 'POST') {
+        const taskId = standaloneGeneratePlanMatch[1];
+        const userTasksId = `user-tasks-${user.id}`;
+        const boardDoId = env.BOARD_DO.idFromName(userTasksId);
+        const boardStub = env.BOARD_DO.get(boardDoId) as BoardDOStub;
+        const body = await request.json() as { agentId?: string };
+        return handleGeneratePlan(env, boardStub, userTasksId, taskId, user.id, body.agentId);
+      }
+
+      // GET /api/tasks/:taskId/plan - Get workflow plan for standalone task
+      const standaloneTaskPlanMatch = url.pathname.match(/^\/api\/tasks\/([^/]+)\/plan$/);
+      if (standaloneTaskPlanMatch && request.method === 'GET') {
+        const taskId = standaloneTaskPlanMatch[1];
+        const userTasksId = `user-tasks-${user.id}`;
+        const boardDoId = env.BOARD_DO.idFromName(userTasksId);
+        const boardStub = env.BOARD_DO.get(boardDoId) as BoardDOStub;
+        try {
+          const plan = await boardStub.getTaskWorkflowPlan(taskId);
+          return jsonResponse({ success: true, data: plan });
+        } catch {
+          return jsonResponse({ success: true, data: null });
+        }
+      }
+
+      // Standalone task plan-specific routes: /api/tasks/:taskId/plans/:planId/*
+      const standalonePlanMatch = url.pathname.match(/^\/api\/tasks\/([^/]+)\/plans\/([^/]+)(\/.*)?$/);
+      if (standalonePlanMatch) {
+        const taskId = standalonePlanMatch[1];
+        const planId = standalonePlanMatch[2];
+        const planAction = standalonePlanMatch[3] || '';
+        const userTasksId = `user-tasks-${user.id}`;
+        const boardDoId = env.BOARD_DO.idFromName(userTasksId);
+        const boardStub = env.BOARD_DO.get(boardDoId) as BoardDOStub;
+
+        // POST /api/tasks/:taskId/plans/:planId/checkpoint - Resolve checkpoint
+        if (planAction === '/checkpoint' && request.method === 'POST') {
+          return handleResolveCheckpoint(request, env, boardStub, userTasksId, planId);
+        }
+
+        // POST /api/tasks/:taskId/plans/:planId/cancel - Cancel workflow
+        if (planAction === '/cancel' && request.method === 'POST') {
+          return handleCancelWorkflow(env, boardStub, userTasksId, planId);
+        }
+
+        // GET /api/tasks/:taskId/plans/:planId - Get workflow plan
+        if (!planAction && request.method === 'GET') {
+          try {
+            const plan = await boardStub.getWorkflowPlan(planId);
+            return jsonResponse({ success: true, data: plan });
+          } catch {
+            return jsonResponse({
+              success: false,
+              error: { code: 'NOT_FOUND', message: 'Plan not found' },
+            }, 404);
+          }
+        }
+
+        // DELETE /api/tasks/:taskId/plans/:planId - Delete workflow plan
+        if (!planAction && request.method === 'DELETE') {
+          try {
+            await boardStub.deleteWorkflowPlan(planId);
+            return jsonResponse({ success: true });
+          } catch {
+            return jsonResponse({
+              success: false,
+              error: { code: 'DELETE_FAILED', message: 'Failed to delete plan' },
+            }, 500);
+          }
+        }
+
+        // GET /api/tasks/:taskId/plans/:planId/logs - Get workflow logs
+        if (planAction === '/logs' && request.method === 'GET') {
+          const limit = parseInt(url.searchParams.get('limit') || '100', 10);
+          const offset = parseInt(url.searchParams.get('offset') || '0', 10);
+          try {
+            const logs = await boardStub.getWorkflowLogs(planId, { limit, offset });
+            return jsonResponse({ success: true, data: logs });
+          } catch {
+            return jsonResponse({
+              success: false,
+              error: { code: 'FETCH_FAILED', message: 'Failed to get logs' },
             }, 500);
           }
         }

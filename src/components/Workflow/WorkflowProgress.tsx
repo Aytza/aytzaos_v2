@@ -10,6 +10,11 @@ interface WorkflowProgressProps {
   onDismiss?: () => void;
   onReviewCheckpoint?: () => void;
   onViewEmail?: (artifact: WorkflowArtifact) => void;
+  /** Optional custom logs fetching for standalone tasks */
+  customLogs?: {
+    logs: import('../../types').WorkflowLog[];
+    fetchLogs: () => Promise<void>;
+  };
 }
 
 export function WorkflowProgress({
@@ -18,8 +23,9 @@ export function WorkflowProgress({
   onDismiss,
   onReviewCheckpoint,
   onViewEmail,
+  customLogs,
 }: WorkflowProgressProps) {
-  const { getWorkflowLogs, fetchWorkflowLogs } = useProject();
+  const projectContext = useProject();
   const [expanded, setExpanded] = useState(false);
   const [logsExpanded, setLogsExpanded] = useState(false);
   const [logsLoading, setLogsLoading] = useState(true);
@@ -29,15 +35,15 @@ export function WorkflowProgress({
   const logsEndRef = useRef<HTMLDivElement>(null);
   const stepsEndRef = useRef<HTMLDivElement>(null);
 
-  const logs = getWorkflowLogs(plan.id);
+  // Use customLogs if provided (standalone tasks), otherwise fall back to project context
+  const logs = customLogs ? customLogs.logs : (projectContext?.getWorkflowLogs(plan.id) || []);
 
+  // Set loading to false immediately - parent handles fetching
+  // For project workflows: logs come via WebSocket
+  // For standalone tasks: logs are fetched by parent and passed via customLogs
   useEffect(() => {
-    const loadLogs = async () => {
-      await fetchWorkflowLogs(plan.projectId, plan.id);
-      setLogsLoading(false);
-    };
-    loadLogs();
-  }, [plan.projectId, plan.id, fetchWorkflowLogs]);
+    setLogsLoading(false);
+  }, []);
 
   useEffect(() => {
     if (expanded && logsExpanded) {
