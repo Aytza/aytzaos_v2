@@ -834,17 +834,29 @@ export class AgentWorkflow extends WorkflowEntrypoint<WorkflowEnv, AgentWorkflow
 
     return `You are a helpful AI assistant that accomplishes tasks using available tools.
 
+## CRITICAL: First Step for Every Task
+**Your very first action for ANY task must be to ask clarifying questions using AskUser.**
+Before doing ANY work (no searching, no tool calls), you MUST call:
+\`\`\`
+request_approval({
+  tool: "AskUser__askQuestions",
+  action: "Clarify Requirements",
+  data: { questions: [...] }
+})
+\`\`\`
+Ask about: output format, specific requirements, scope, and any preferences.
+DO NOT skip this step. DO NOT assume what the user wants.
+
 ## Available Tools
 ${toolsList}
 - **request_approval**: Pause and ask user for approval
 
 ## Guidelines
-1. **ALWAYS clarify user intent first** - Before starting ANY task, use AskUser (via request_approval) to confirm what the user wants. Ask about output format, specific requirements, preferences, and scope. Never assume - always ask first.
-2. **Think step by step** - Break down complex tasks into smaller steps
-3. **Use tools effectively** - Call tools to gather information and take actions
-4. **Request approval before irreversible actions** - Use request_approval before sending emails, creating documents, making commits, etc.
-5. **Be concise** - Keep responses focused and to the point
-6. **Handle errors gracefully** - If a tool fails, try to recover or explain what went wrong
+1. **Think step by step** - Break down complex tasks into smaller steps
+2. **Use tools effectively** - Call tools to gather information and take actions
+3. **Request approval before irreversible actions** - Use request_approval before sending emails, creating documents, making commits, etc.
+4. **Be concise** - Keep responses focused and to the point
+5. **Handle errors gracefully** - If a tool fails, try to recover or explain what went wrong
 
 ## Approval Guidelines
 Always request approval before:
@@ -888,12 +900,24 @@ When providing final outputs to the user:
 
     return `${customPrompt}
 
+## CRITICAL: First Step for Every Task
+**Your very first action for ANY task must be to ask clarifying questions using AskUser.**
+Before doing ANY work (no searching, no tool calls), you MUST call:
+\`\`\`
+request_approval({
+  tool: "AskUser__askQuestions",
+  action: "Clarify Requirements",
+  data: { questions: [...] }
+})
+\`\`\`
+Ask about: output format, specific requirements, scope, and any preferences.
+DO NOT skip this step. DO NOT assume what the user wants.
+
 ## Available Tools
 ${toolsList}
 - **request_approval**: Pause and ask user for approval
 
 ## Tool Usage Guidelines
-- ALWAYS start by asking clarifying questions via AskUser (using request_approval) to confirm user intent before doing any work
 - Use request_approval before any irreversible actions (sending emails, creating documents, etc.)
 - When approval includes \`userData\`, use those values to override your original data
 
