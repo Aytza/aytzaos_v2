@@ -15,6 +15,7 @@ import { DocsMCPServer } from '../google/DocsMCP';
 import { SheetsMCPServer } from '../google/SheetsMCP';
 import { SandboxMCPServer } from '../sandbox/SandboxMCP';
 import { GitHubMCPServer } from '../github/GitHubMCP';
+import { ExaMCPServer } from '../exa/ExaMCP';
 import { refreshAccessToken } from '../google/oauth';
 import { CREDENTIAL_TYPES } from '../constants';
 import type { Sandbox } from '@cloudflare/sandbox';
@@ -320,6 +321,24 @@ GitHub__list_issues({ owner: "...", repo: "...", state: "open" })
 GitHub__get_pull_request({ owner: "...", repo: "...", pull_number: 123 })
 \`\`\``;
 
+const EXA_GUIDANCE = `## Exa Web Search
+Use Exa tools to search the web and find code examples.
+
+**Web search:**
+\`\`\`
+Exa__web_search_exa({ query: "your search query", numResults: 10 })
+\`\`\`
+
+**Code context search (for programming questions):**
+\`\`\`
+Exa__get_code_context_exa({ query: "how to use React hooks with TypeScript" })
+\`\`\`
+
+Use code context search for:
+- Finding code examples and documentation
+- Looking up API usage patterns
+- Getting implementation examples from real codebases`;
+
 // ============================================================================
 // Registry
 // ============================================================================
@@ -433,6 +452,24 @@ export const ACCOUNT_REGISTRY: AccountDefinition[] = [
           },
         ],
         workflowGuidance: GITHUB_GUIDANCE,
+      },
+    ],
+  },
+  {
+    id: 'exa',
+    name: 'Exa',
+    credentialType: 'none',
+    authType: 'env_binding',
+    alwaysEnabled: true,
+    envBindingKeys: ['EXA_API_KEY'],
+    mcps: [
+      {
+        id: 'exa',
+        name: 'Exa Search',
+        serverName: 'Exa',
+        description: 'Web search and code context powered by Exa AI',
+        factory: (_creds, env) => new ExaMCPServer(env?.EXA_API_KEY as string || ''),
+        workflowGuidance: EXA_GUIDANCE,
       },
     ],
   },

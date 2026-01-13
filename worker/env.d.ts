@@ -7,6 +7,8 @@ declare global {
   interface Env {
     /** Anthropic API key for Claude agents. Set in .dev.vars or as Cloudflare secret. */
     ANTHROPIC_API_KEY?: string;
+    /** Exa API key for web search. Set in .dev.vars or as Cloudflare secret. */
+    EXA_API_KEY?: string;
   }
 }
 
