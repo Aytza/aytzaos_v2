@@ -1,9 +1,11 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Button, Modal, Input, RichTextEditor, AgentIcon } from '../common';
 import { AgentSection } from '../Task/AgentSection';
 import { WorkflowProgress } from '../Workflow';
 import { getApprovalView } from '../Approval';
 import { useTaskWorkflow } from '../../hooks/useTaskWorkflow';
+import { useToast } from '../../context/ToastContext';
 import type { Task, TaskPriority, WorkflowArtifact } from '../../types';
 import * as api from '../../api/client';
 import './Tasks.css';
@@ -12,6 +14,8 @@ type TaskModalView = 'main' | 'checkpoint-review' | 'email-view';
 type ModalMode = 'create' | 'edit';
 
 export function Tasks() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const { addToast } = useToast();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -36,6 +40,35 @@ export function Tasks() {
     taskId: editingTask?.id || '',
     mode: 'standalone',
   });
+
+  // Handle OAuth success/error from URL params (global account connection)
+  useEffect(() => {
+    const googleConnected = searchParams.get('google');
+    const googleError = searchParams.get('google_error');
+    const githubConnected = searchParams.get('github');
+    const githubError = searchParams.get('github_error');
+
+    if (googleConnected === 'connected') {
+      addToast({ type: 'success', message: 'Google account connected successfully' });
+      searchParams.delete('google');
+      setSearchParams(searchParams, { replace: true });
+    }
+    if (githubConnected === 'connected') {
+      addToast({ type: 'success', message: 'GitHub account connected successfully' });
+      searchParams.delete('github');
+      setSearchParams(searchParams, { replace: true });
+    }
+    if (googleError) {
+      addToast({ type: 'error', message: `Google connection failed: ${googleError}` });
+      searchParams.delete('google_error');
+      setSearchParams(searchParams, { replace: true });
+    }
+    if (githubError) {
+      addToast({ type: 'error', message: `GitHub connection failed: ${githubError}` });
+      searchParams.delete('github_error');
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, [searchParams, setSearchParams, addToast]);
 
   // Load tasks on mount
   useEffect(() => {

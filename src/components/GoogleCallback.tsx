@@ -29,12 +29,19 @@ export function GoogleCallback() {
 
         const result = await response.json() as {
           success: boolean;
-          data?: { boardId: string };
+          data?: { boardId?: string; projectId?: string; global?: boolean };
           error?: { message: string };
         };
 
         if (result.success && result.data) {
-          navigate(`/board/${result.data.boardId}?google=connected`, { replace: true });
+          // Handle global OAuth (user-level credentials)
+          if (result.data.global) {
+            navigate('/tasks?google=connected', { replace: true });
+          } else {
+            // Handle project-level OAuth (support both boardId and projectId)
+            const projectId = result.data.projectId || result.data.boardId;
+            navigate(`/project/${projectId}?google=connected`, { replace: true });
+          }
         } else {
           setError(result.error?.message || 'OAuth failed');
         }

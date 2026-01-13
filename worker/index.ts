@@ -10,9 +10,13 @@ import { logger } from './utils/logger';
 import {
   handleGitHubOAuthUrl,
   handleGitHubOAuthExchange,
-  handleGitHubOAuthCallback,
+  handleGitHubOAuthCallbackV2,
   handleGoogleOAuthUrl,
   handleGoogleOAuthExchange,
+  handleGoogleOAuthCallback,
+  handleGlobalOAuthUrl,
+  handleGetGlobalCredentials,
+  handleDeleteGlobalCredential,
 } from './handlers/oauth';
 import { routeProjectRequest } from './handlers/projects';
 import { handleGeneratePlan, handleResolveCheckpoint, handleCancelWorkflow } from './handlers/workflows';
@@ -53,9 +57,9 @@ export default {
       return handleGitHubOAuthExchange(request, env, url);
     }
 
-    // Legacy callback route (for direct browser navigation)
+    // Callback routes (for direct browser navigation) - handle both project-level and global OAuth
     if (url.pathname === '/api/github/oauth/callback') {
-      return handleGitHubOAuthCallback(request, env, url);
+      return handleGitHubOAuthCallbackV2(request, env, url);
     }
 
     // Google OAuth routes
@@ -65,6 +69,11 @@ export default {
 
     if (url.pathname === '/api/google/oauth/exchange') {
       return handleGoogleOAuthExchange(request, env, url);
+    }
+
+    // Google OAuth callback - handles both project-level and global OAuth
+    if (url.pathname === '/api/google/oauth/callback') {
+      return handleGoogleOAuthCallback(request, env, url);
     }
 
     // ============================================
@@ -101,6 +110,27 @@ export default {
             },
           },
         });
+      }
+
+      // ============================================
+      // GLOBAL OAUTH ROUTES (user-level credentials)
+      // ============================================
+
+      // GET /api/global/oauth/url - Get OAuth URL for global credentials
+      if (url.pathname === '/api/global/oauth/url' && request.method === 'GET') {
+        return handleGlobalOAuthUrl(request, env, url, user.id);
+      }
+
+      // GET /api/global/credentials - Get all global credentials
+      if (url.pathname === '/api/global/credentials' && request.method === 'GET') {
+        return handleGetGlobalCredentials(env, user.id);
+      }
+
+      // DELETE /api/global/credentials/:id - Delete a global credential
+      const globalCredMatch = url.pathname.match(/^\/api\/global\/credentials\/([^/]+)$/);
+      if (globalCredMatch && request.method === 'DELETE') {
+        const credentialId = globalCredMatch[1];
+        return handleDeleteGlobalCredential(env, user.id, credentialId);
       }
 
       // GET /api/projects - List user's projects (from UserDO)
@@ -571,11 +601,10 @@ export default {
       }
 
       // Standalone task plan-specific routes: /api/tasks/:taskId/plans/:planId/*
-      const standalonePlanMatch = url.pathname.match(/^\/api\/tasks\/([^/]+)\/plans\/([^/]+)(\/.*)?$/);
+      const standalonePlanMatch = url.pathname.match(/^\/api\/tasks\/[^/]+\/plans\/([^/]+)(\/.*)?$/);
       if (standalonePlanMatch) {
-        const taskId = standalonePlanMatch[1];
-        const planId = standalonePlanMatch[2];
-        const planAction = standalonePlanMatch[3] || '';
+        const planId = standalonePlanMatch[1];
+        const planAction = standalonePlanMatch[2] || '';
         const userTasksId = `user-tasks-${user.id}`;
         const boardDoId = env.BOARD_DO.idFromName(userTasksId);
         const boardStub = env.BOARD_DO.get(boardDoId) as BoardDOStub;
@@ -621,7 +650,7 @@ export default {
           const limit = parseInt(url.searchParams.get('limit') || '100', 10);
           const offset = parseInt(url.searchParams.get('offset') || '0', 10);
           try {
-            const logs = await boardStub.getWorkflowLogs(planId, { limit, offset });
+            const logs = await boardStub.getWorkflowLogs(planId, limit, offset);
             return jsonResponse({ success: true, data: logs });
           } catch {
             return jsonResponse({

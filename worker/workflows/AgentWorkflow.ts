@@ -281,7 +281,21 @@ export class AgentWorkflow extends WorkflowEntrypoint<WorkflowEnv, AgentWorkflow
         };
 
         for (const account of getOAuthAccounts()) {
-          const credData = await stub.getCredentialFull(projectId, account.credentialType);
+          // Try project-level credentials first, then fall back to global credentials
+          let credData = await stub.getCredentialFull(projectId, account.credentialType);
+          let isGlobalCredential = false;
+
+          // If not found at project level, check global credentials
+          if (!credData) {
+            try {
+              credData = await globalStub.getCredentialFull('__global__', account.credentialType);
+              if (credData) {
+                isGlobalCredential = true;
+              }
+            } catch {
+              // Global container may not exist or have credentials
+            }
+          }
 
           const tokenKey = `${account.id}Token`;
           let accessToken = credData?.value;
@@ -294,7 +308,7 @@ export class AgentWorkflow extends WorkflowEntrypoint<WorkflowEnv, AgentWorkflow
                   Date.now() > new Date(metadata.expires_at as string).getTime() - TOKEN_REFRESH_BUFFER_MS;
 
                 if (needsRefresh) {
-                  logger.workflow.info('Refreshing token', { account: account.id });
+                  logger.workflow.info('Refreshing token', { account: account.id, isGlobal: isGlobalCredential });
 
                   const clientIdKey = `${account.id.toUpperCase()}_CLIENT_ID`;
                   const clientSecretKey = `${account.id.toUpperCase()}_CLIENT_SECRET`;
@@ -313,7 +327,12 @@ export class AgentWorkflow extends WorkflowEntrypoint<WorkflowEnv, AgentWorkflow
                       Date.now() + (newTokenData.expires_in || 3600) * 1000
                     ).toISOString();
 
-                    await stub.updateCredentialValue(projectId, account.credentialType, newTokenData.access_token, { expires_at: newExpiresAt });
+                    // Update the credential in the correct location (project or global)
+                    if (isGlobalCredential) {
+                      await globalStub.updateCredentialValue('__global__', account.credentialType, newTokenData.access_token, { expires_at: newExpiresAt });
+                    } else {
+                      await stub.updateCredentialValue(projectId, account.credentialType, newTokenData.access_token, { expires_at: newExpiresAt });
+                    }
 
                     credentials[`${account.id}RefreshToken`] = metadata.refresh_token as string;
                     credentials[`${account.id}TokenExpiresAt`] = newExpiresAt;

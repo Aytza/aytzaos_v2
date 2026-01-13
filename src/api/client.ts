@@ -437,6 +437,28 @@ export async function getGoogleOAuthUrl(
 }
 
 // ============================================
+// GLOBAL CREDENTIALS (User-level OAuth accounts)
+// ============================================
+
+export async function getGlobalCredentials(): Promise<ApiResponse<ProjectCredential[]>> {
+  return request<ProjectCredential[]>('/global/credentials');
+}
+
+export async function getGlobalOAuthUrl(
+  provider: string
+): Promise<ApiResponse<{ url: string }>> {
+  return request<{ url: string }>(`/global/oauth/url?provider=${encodeURIComponent(provider)}`);
+}
+
+export async function deleteGlobalCredential(
+  credentialId: string
+): Promise<ApiResponse<void>> {
+  return request<void>(`/global/credentials/${credentialId}`, {
+    method: 'DELETE',
+  });
+}
+
+// ============================================
 // MCP SERVERS
 // ============================================
 

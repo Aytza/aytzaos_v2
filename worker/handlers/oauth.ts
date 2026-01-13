@@ -1,5 +1,6 @@
 /**
  * OAuth handlers for GitHub and Google
+ * Supports both project-level and global (user-level) OAuth
  */
 
 import {
@@ -20,6 +21,14 @@ import { CREDENTIAL_TYPES } from '../constants';
 import type { BoardDO } from '../BoardDO';
 
 type BoardDOStub = DurableObjectStub<BoardDO>;
+
+// Extended state to support global OAuth
+interface OAuthState {
+  boardId: string;
+  nonce: string;
+  global?: boolean;
+  userId?: string;
+}
 
 // ============================================
 // PROVIDER CONFIGS
@@ -169,7 +178,7 @@ async function handleOAuthExchange(
   }
 
   try {
-    const state = await decodeOAuthState(stateParam, env.ENCRYPTION_KEY);
+    const state = await decodeOAuthState(stateParam, env.ENCRYPTION_KEY) as OAuthState | null;
     if (!state) {
       return jsonResponse({
         success: false,
@@ -185,6 +194,14 @@ async function handleOAuthExchange(
 
     // Store credential and create MCP servers
     await storeCredentialAndCreateMCPs(env, projectId, provider, user, tokenData);
+
+    // Return different data for global vs project-level OAuth
+    if (state.global) {
+      return jsonResponse({
+        success: true,
+        data: { global: true },
+      });
+    }
 
     return jsonResponse({
       success: true,
@@ -331,11 +348,280 @@ export function handleGoogleOAuthExchange(_request: Request, env: Env, url: URL)
   return handleOAuthExchange(env, url, googleProvider);
 }
 
-function redirectWithError(origin: string, error: string): Response {
-  const errorUrl = new URL(origin);
-  errorUrl.searchParams.set('github_error', error);
+function redirectWithError(origin: string, error: string, provider: 'github' | 'google' = 'github'): Response {
+  // Redirect to /tasks for global flows or root for project flows
+  // Using /tasks ensures the error is visible on a valid page
   return new Response(null, {
     status: 302,
-    headers: { Location: errorUrl.toString() },
+    headers: { Location: `${origin}/tasks?${provider}_error=${encodeURIComponent(error)}` },
   });
+}
+
+// ============================================
+// GLOBAL OAUTH HANDLERS (User-level credentials)
+// ============================================
+
+/**
+ * Get OAuth URL for global (user-level) credentials
+ * Stores credentials in user's task container so they're available
+ * for both projects and standalone tasks
+ */
+export async function handleGlobalOAuthUrl(
+  request: Request,
+  env: Env,
+  url: URL,
+  userId: string
+): Promise<Response> {
+  if (request.method !== 'GET') {
+    return jsonResponse({ success: false, error: { code: '405', message: 'Method not allowed' } }, 405);
+  }
+
+  const providerName = url.searchParams.get('provider');
+  if (!providerName || !['github', 'google'].includes(providerName)) {
+    return jsonResponse({
+      success: false,
+      error: { code: 'BAD_REQUEST', message: 'Invalid provider. Must be "github" or "google"' },
+    }, 400);
+  }
+
+  const provider = providerName === 'github' ? githubProvider : googleProvider;
+  const clientId = provider.getClientId(env);
+
+  if (!clientId) {
+    return jsonResponse({
+      success: false,
+      error: { code: 'NOT_CONFIGURED', message: `${provider.name} OAuth not configured` },
+    }, 500);
+  }
+
+  // Use user's task container as the "project" for global credentials
+  const userTasksContainerId = `user-tasks-${userId}`;
+  // Use the same callback path as project-level OAuth (already registered in Google Console)
+  const redirectUri = `${url.origin}${provider.callbackPath}`;
+
+  const signedState = await encodeOAuthState(
+    {
+      boardId: userTasksContainerId,
+      nonce: generateState(),
+      global: true,
+      userId,
+    },
+    env.ENCRYPTION_KEY
+  );
+
+  const authUrl = provider.getOAuthUrl(clientId, redirectUri, signedState);
+
+  return jsonResponse({
+    success: true,
+    data: { url: authUrl },
+  });
+}
+
+/**
+ * Handle OAuth callback for global credentials
+ * Called by the standard callback handlers when global mode is detected
+ */
+async function handleGlobalOAuthCallback(
+  env: Env,
+  url: URL,
+  provider: OAuthProvider,
+  code: string,
+  state: OAuthState
+): Promise<Response> {
+  const clientId = provider.getClientId(env);
+  const clientSecret = provider.getClientSecret(env);
+
+  if (!clientId || !clientSecret) {
+    return redirectToSettingsWithError(url.origin, `${provider.name} OAuth not configured`, provider.name);
+  }
+
+  try {
+    const redirectUri = `${url.origin}${provider.callbackPath}`;
+    const tokenData = await provider.exchangeCode(code, clientId, clientSecret, redirectUri);
+    const user = await provider.getUser(tokenData.access_token);
+
+    // Store in user's task container
+    await storeCredentialAndCreateMCPs(env, state.boardId, provider, user, tokenData);
+
+    // Redirect to tasks page with success param (global settings are accessed from there)
+    return new Response(null, {
+      status: 302,
+      headers: {
+        Location: `${url.origin}/tasks?${provider.name}=connected`,
+      },
+    });
+  } catch (error) {
+    return redirectToSettingsWithError(
+      url.origin,
+      error instanceof Error ? error.message : 'OAuth failed',
+      provider.name
+    );
+  }
+}
+
+function redirectToSettingsWithError(origin: string, error: string, provider: string): Response {
+  return new Response(null, {
+    status: 302,
+    headers: {
+      Location: `${origin}/tasks?${provider}_error=${encodeURIComponent(error)}`,
+    },
+  });
+}
+
+/**
+ * Updated GitHub callback that handles both project-level and global OAuth
+ */
+export async function handleGitHubOAuthCallbackV2(
+  request: Request,
+  env: Env,
+  url: URL
+): Promise<Response> {
+  if (request.method !== 'GET') {
+    return jsonResponse({ success: false, error: { code: '405', message: 'Method not allowed' } }, 405);
+  }
+
+  const code = url.searchParams.get('code');
+  const stateParam = url.searchParams.get('state');
+
+  if (!code || !stateParam) {
+    return redirectWithError(url.origin, 'Missing code or state parameter', 'github');
+  }
+
+  try {
+    const state = await decodeOAuthState(stateParam, env.ENCRYPTION_KEY) as OAuthState | null;
+    if (!state) {
+      return redirectWithError(url.origin, 'Invalid or expired state parameter', 'github');
+    }
+
+    // Check if this is a global OAuth flow
+    if (state.global) {
+      return handleGlobalOAuthCallback(env, url, githubProvider, code, state);
+    }
+
+    // Standard project-level OAuth flow
+    const clientId = githubProvider.getClientId(env);
+    const clientSecret = githubProvider.getClientSecret(env);
+
+    if (!clientId || !clientSecret) {
+      return redirectWithError(url.origin, 'GitHub OAuth not configured', 'github');
+    }
+
+    const { boardId: projectId } = state;
+    const redirectUri = `${url.origin}/api/github/oauth/callback`;
+
+    const tokenData = await githubProvider.exchangeCode(code, clientId, clientSecret, redirectUri);
+    const user = await githubProvider.getUser(tokenData.access_token);
+
+    await storeCredentialAndCreateMCPs(env, projectId, githubProvider, user, tokenData);
+
+    return new Response(null, {
+      status: 302,
+      headers: {
+        Location: `${url.origin}/project/${projectId}?github=connected`,
+      },
+    });
+  } catch (error) {
+    return redirectWithError(
+      url.origin,
+      error instanceof Error ? error.message : 'OAuth failed',
+      'github'
+    );
+  }
+}
+
+/**
+ * Google OAuth callback that handles both project-level and global OAuth
+ */
+export async function handleGoogleOAuthCallback(
+  request: Request,
+  env: Env,
+  url: URL
+): Promise<Response> {
+  if (request.method !== 'GET') {
+    return jsonResponse({ success: false, error: { code: '405', message: 'Method not allowed' } }, 405);
+  }
+
+  const code = url.searchParams.get('code');
+  const stateParam = url.searchParams.get('state');
+
+  if (!code || !stateParam) {
+    return redirectWithError(url.origin, 'Missing code or state parameter', 'google');
+  }
+
+  try {
+    const state = await decodeOAuthState(stateParam, env.ENCRYPTION_KEY) as OAuthState | null;
+
+    if (!state) {
+      return redirectWithError(url.origin, 'Invalid or expired state parameter', 'google');
+    }
+
+    // Check if this is a global OAuth flow
+    if (state.global) {
+      return handleGlobalOAuthCallback(env, url, googleProvider, code, state);
+    }
+
+    // Standard project-level OAuth flow
+    const clientId = googleProvider.getClientId(env);
+    const clientSecret = googleProvider.getClientSecret(env);
+
+    if (!clientId || !clientSecret) {
+      return redirectWithError(url.origin, 'Google OAuth not configured', 'google');
+    }
+
+    const { boardId: projectId } = state;
+    const redirectUri = `${url.origin}/api/google/oauth/callback`;
+
+    const tokenData = await googleProvider.exchangeCode(code, clientId, clientSecret, redirectUri);
+    const user = await googleProvider.getUser(tokenData.access_token);
+
+    await storeCredentialAndCreateMCPs(env, projectId, googleProvider, user, tokenData);
+
+    return new Response(null, {
+      status: 302,
+      headers: {
+        Location: `${url.origin}/project/${projectId}?google=connected`,
+      },
+    });
+  } catch (error) {
+    return redirectWithError(
+      url.origin,
+      error instanceof Error ? error.message : 'OAuth failed',
+      'google'
+    );
+  }
+}
+
+// ============================================
+// GLOBAL CREDENTIAL MANAGEMENT
+// ============================================
+
+/**
+ * Get all global credentials for a user
+ */
+export async function handleGetGlobalCredentials(
+  env: Env,
+  userId: string
+): Promise<Response> {
+  const userTasksContainerId = `user-tasks-${userId}`;
+  const doId = env.BOARD_DO.idFromName(userTasksContainerId);
+  const stub = env.BOARD_DO.get(doId) as BoardDOStub;
+
+  const credentials = await stub.getCredentials(userTasksContainerId);
+  return jsonResponse({ success: true, data: credentials });
+}
+
+/**
+ * Delete a global credential
+ */
+export async function handleDeleteGlobalCredential(
+  env: Env,
+  userId: string,
+  credentialId: string
+): Promise<Response> {
+  const userTasksContainerId = `user-tasks-${userId}`;
+  const doId = env.BOARD_DO.idFromName(userTasksContainerId);
+  const stub = env.BOARD_DO.get(doId) as BoardDOStub;
+
+  await stub.deleteCredential(userTasksContainerId, credentialId);
+  return jsonResponse({ success: true });
 }

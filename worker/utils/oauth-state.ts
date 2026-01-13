@@ -9,24 +9,56 @@ interface OAuthStatePayload {
   boardId: string;
   nonce: string;
   timestamp: number;
+  /** Whether this is a global (user-level) OAuth flow */
+  global?: boolean;
+  /** User ID for global OAuth flows */
+  userId?: string;
 }
 
 const STATE_MAX_AGE_MS = 10 * 60 * 1000; // 10 minutes
 
 /**
+ * Convert base64 to URL-safe base64
+ */
+function toBase64Url(base64: string): string {
+  return base64
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/, '');
+}
+
+/**
+ * Convert URL-safe base64 back to standard base64
+ */
+function fromBase64Url(base64url: string): string {
+  let base64 = base64url
+    .replace(/-/g, '+')
+    .replace(/_/g, '/');
+  // Add padding if needed
+  while (base64.length % 4) {
+    base64 += '=';
+  }
+  return base64;
+}
+
+/**
  * Sign and encode OAuth state
  */
 export async function encodeOAuthState(
-  payload: { boardId: string; nonce: string },
+  payload: { boardId: string; nonce: string; global?: boolean; userId?: string },
   secretKey: string
 ): Promise<string> {
   const statePayload: OAuthStatePayload = {
-    ...payload,
+    boardId: payload.boardId,
+    nonce: payload.nonce,
     timestamp: Date.now(),
+    ...(payload.global && { global: payload.global }),
+    ...(payload.userId && { userId: payload.userId }),
   };
 
   const payloadJson = JSON.stringify(statePayload);
-  const payloadBase64 = btoa(payloadJson);
+  // Use URL-safe base64 to prevent issues with URL encoding
+  const payloadBase64 = toBase64Url(btoa(payloadJson));
 
   // Create HMAC signature
   const signature = await createHmacSignature(payloadBase64, secretKey);
@@ -48,16 +80,17 @@ export async function decodeOAuthState(
     return null;
   }
 
-  const [payloadBase64, signature] = parts;
+  const [payloadBase64Url, signature] = parts;
 
-  // Verify signature
-  const expectedSignature = await createHmacSignature(payloadBase64, secretKey);
+  // Verify signature (signature is computed on the URL-safe base64)
+  const expectedSignature = await createHmacSignature(payloadBase64Url, secretKey);
   if (!timingSafeEqual(signature, expectedSignature)) {
     return null;
   }
 
-  // Decode payload
+  // Decode payload (convert from URL-safe base64 to standard base64 first)
   try {
+    const payloadBase64 = fromBase64Url(payloadBase64Url);
     const payloadJson = atob(payloadBase64);
     const payload = JSON.parse(payloadJson) as OAuthStatePayload;
 
