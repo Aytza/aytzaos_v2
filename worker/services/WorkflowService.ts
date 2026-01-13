@@ -126,6 +126,7 @@ export class WorkflowService {
     currentStepIndex?: number;
     checkpointData?: object;
     result?: object;
+    conversationHistory?: object[];
   }): Response {
     const now = new Date().toISOString();
     const plan = this.sql.exec('SELECT * FROM workflow_plans WHERE id = ?', planId).toArray()[0];
@@ -143,6 +144,7 @@ export class WorkflowService {
         current_step_index = COALESCE(?, current_step_index),
         checkpoint_data = COALESCE(?, checkpoint_data),
         result = COALESCE(?, result),
+        conversation_history = COALESCE(?, conversation_history),
         updated_at = ?
        WHERE id = ?`,
       data.status ?? null,
@@ -152,6 +154,7 @@ export class WorkflowService {
       data.currentStepIndex ?? null,
       data.checkpointData ? JSON.stringify(data.checkpointData) : null,
       data.result ? JSON.stringify(data.result) : null,
+      data.conversationHistory ? JSON.stringify(data.conversationHistory) : null,
       now,
       planId
     );

@@ -74,6 +74,14 @@ export function transformWorkflowPlan(plan: Record<string, unknown>): Record<str
     }
   }
 
+  if (typeof transformed.conversationHistory === 'string' && transformed.conversationHistory) {
+    try {
+      transformed.conversationHistory = JSON.parse(transformed.conversationHistory);
+    } catch {
+      // Leave as string
+    }
+  }
+
   return transformed;
 }
 

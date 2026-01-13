@@ -709,6 +709,17 @@ export async function getWorkflowLogs(
   return request<WorkflowLog[]>(`/projects/${projectId}/plans/${planId}/logs${query}`);
 }
 
+export async function resumeWorkflow(
+  projectId: string,
+  planId: string,
+  feedback: string
+): Promise<ApiResponse<WorkflowPlan>> {
+  return request<WorkflowPlan>(`/projects/${projectId}/plans/${planId}/resume`, {
+    method: 'POST',
+    body: JSON.stringify({ feedback }),
+  });
+}
+
 export async function generateWorkflowPlan(
   projectId: string,
   taskId: string,
@@ -790,6 +801,17 @@ export async function getStandaloneWorkflowLogs(
   if (options?.offset) params.set('offset', options.offset.toString());
   const query = params.toString() ? `?${params.toString()}` : '';
   return request<WorkflowLog[]>(`/tasks/${taskId}/plans/${planId}/logs${query}`);
+}
+
+export async function resumeStandaloneWorkflow(
+  taskId: string,
+  planId: string,
+  feedback: string
+): Promise<ApiResponse<WorkflowPlan>> {
+  return request<WorkflowPlan>(`/tasks/${taskId}/plans/${planId}/resume`, {
+    method: 'POST',
+    body: JSON.stringify({ feedback }),
+  });
 }
 
 // ============================================

@@ -331,6 +331,8 @@ export function Tasks() {
                   setSelectedEmailArtifact(artifact);
                   setCurrentView('email-view');
                 }}
+                onResume={workflow.resumeWorkflow}
+                isResuming={workflow.isResumingWorkflow}
                 customLogs={{
                   logs: workflow.workflowLogs,
                   fetchLogs: workflow.loadWorkflowPlan,

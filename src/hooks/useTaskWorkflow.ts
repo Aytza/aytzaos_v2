@@ -32,6 +32,7 @@ interface UseTaskWorkflowReturn {
   isLoading: boolean;
   isGeneratingPlan: boolean;
   isRespondingToCheckpoint: boolean;
+  isResumingWorkflow: boolean;
   error: string | null;
   wsConnected: boolean;
 
@@ -44,6 +45,7 @@ interface UseTaskWorkflowReturn {
     action: 'approve' | 'request_changes' | 'cancel',
     options?: { feedback?: string; data?: Record<string, unknown> }
   ) => Promise<void>;
+  resumeWorkflow: (feedback: string) => Promise<void>;
   clearError: () => void;
 }
 
@@ -58,6 +60,7 @@ export function useTaskWorkflow({
   const [isLoading, setIsLoading] = useState(false);
   const [isGeneratingPlan, setIsGeneratingPlan] = useState(false);
   const [isRespondingToCheckpoint, setIsRespondingToCheckpoint] = useState(false);
+  const [isResumingWorkflow, setIsResumingWorkflow] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [wsConnected, setWsConnected] = useState(false);
   const [userTasksId, setUserTasksId] = useState<string | null>(null);
@@ -86,6 +89,7 @@ export function useTaskWorkflow({
     setError(null);
     setIsGeneratingPlan(false);
     setIsRespondingToCheckpoint(false);
+    setIsResumingWorkflow(false);
   }, [taskId]);
 
   // Get user ID for standalone tasks WebSocket connection
@@ -161,6 +165,7 @@ export function useTaskWorkflow({
                 setWorkflowPlan(plan);
                 if (plan.status === 'executing' || plan.status === 'completed' || plan.status === 'failed') {
                   setIsGeneratingPlan(false);
+                  setIsResumingWorkflow(false);
                 }
               }
             }
@@ -341,6 +346,32 @@ export function useTaskWorkflow({
     }
   }, [workflowPlan, taskId, projectId, mode]);
 
+  // Resume a completed/failed workflow with user feedback
+  const resumeWorkflow = useCallback(async (feedback: string) => {
+    if (!workflowPlan) return;
+
+    setIsResumingWorkflow(true);
+    setError(null);
+    setWorkflowLogs([]); // Clear logs for the new workflow
+
+    try {
+      const result = mode === 'standalone'
+        ? await api.resumeStandaloneWorkflow(taskId, workflowPlan.id, feedback)
+        : await api.resumeWorkflow(projectId!, workflowPlan.id, feedback);
+
+      if (result.success && result.data) {
+        setWorkflowPlan(result.data);
+        // Don't set isResumingWorkflow to false - wait for WebSocket update
+      } else {
+        setError(result.error?.message || 'Failed to resume workflow');
+        setIsResumingWorkflow(false);
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to resume workflow');
+      setIsResumingWorkflow(false);
+    }
+  }, [workflowPlan, taskId, projectId, mode]);
+
   const clearError = useCallback(() => {
     setError(null);
   }, []);
@@ -351,6 +382,7 @@ export function useTaskWorkflow({
     isLoading,
     isGeneratingPlan,
     isRespondingToCheckpoint,
+    isResumingWorkflow,
     error,
     wsConnected,
     loadWorkflowPlan,
@@ -358,6 +390,7 @@ export function useTaskWorkflow({
     cancelWorkflow,
     dismissWorkflow,
     resolveCheckpoint,
+    resumeWorkflow,
     clearError,
   };
 }

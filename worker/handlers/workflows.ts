@@ -204,6 +204,143 @@ export async function handleResolveCheckpoint(
 }
 
 /**
+ * Handle resume workflow request - continues a completed/failed workflow with user feedback
+ */
+export async function handleResumeWorkflow(
+  request: Request,
+  env: Env,
+  boardStub: BoardDOStub,
+  boardId: string,
+  planId: string,
+  userId: string
+): Promise<Response> {
+  if (!env.AGENT_WORKFLOW) {
+    return jsonResponse({
+      success: false,
+      error: { code: 'NOT_CONFIGURED', message: 'Agent workflow not configured' },
+    }, 500);
+  }
+
+  // Get the existing plan
+  let existingPlan: {
+    id: string;
+    taskId: string;
+    projectId: string;
+    status: string;
+    conversationHistory?: object[] | null;
+  };
+  try {
+    existingPlan = await boardStub.getWorkflowPlan(planId);
+  } catch {
+    return jsonResponse({
+      success: false,
+      error: { code: 'NOT_FOUND', message: 'Plan not found' },
+    }, 404);
+  }
+
+  // Only allow resuming completed or failed workflows
+  if (existingPlan.status !== 'completed' && existingPlan.status !== 'failed') {
+    return jsonResponse({
+      success: false,
+      error: { code: 'INVALID_STATUS', message: `Cannot resume workflow with status: ${existingPlan.status}. Must be completed or failed.` },
+    }, 400);
+  }
+
+  // Verify conversation history exists
+  if (!existingPlan.conversationHistory || existingPlan.conversationHistory.length === 0) {
+    return jsonResponse({
+      success: false,
+      error: { code: 'NO_HISTORY', message: 'No conversation history available to resume from' },
+    }, 400);
+  }
+
+  // Parse the resume feedback
+  const body = await request.json() as { feedback: string };
+  if (!body.feedback || body.feedback.trim() === '') {
+    return jsonResponse({
+      success: false,
+      error: { code: 'NO_FEEDBACK', message: 'Resume feedback is required' },
+    }, 400);
+  }
+
+  // Get the task details
+  let task: { id: string; title: string; description?: string | null };
+  try {
+    task = await boardStub.getTask(existingPlan.taskId);
+  } catch {
+    return jsonResponse({
+      success: false,
+      error: { code: 'NOT_FOUND', message: 'Task not found' },
+    }, 404);
+  }
+
+  // Create a new plan record for the resumed workflow
+  const newPlanId = crypto.randomUUID();
+  try {
+    await boardStub.createWorkflowPlan(existingPlan.taskId, {
+      id: newPlanId,
+      projectId: boardId,
+    });
+  } catch {
+    return jsonResponse({
+      success: false,
+      error: { code: 'CREATE_FAILED', message: 'Failed to create plan record' },
+    }, 500);
+  }
+
+  // Fetch Anthropic API key
+  const anthropicApiKey = env.ANTHROPIC_API_KEY ||
+    await boardStub.getCredentialValue(boardId, CREDENTIAL_TYPES.ANTHROPIC_API_KEY);
+
+  if (!anthropicApiKey) {
+    await boardStub.updateWorkflowPlan(newPlanId, {
+      status: 'failed',
+      result: { error: 'Anthropic API key not configured' },
+    });
+    return jsonResponse({
+      success: false,
+      error: { code: 'NO_ANTHROPIC', message: 'Anthropic API key not configured' },
+    }, 400);
+  }
+
+  // Build task description
+  const taskDescription = task.title && task.description
+    ? `${task.title}\n\n${task.description}`
+    : task.title || task.description || 'No task description provided';
+
+  // Start the resumed workflow
+  try {
+    const workflowParams: AgentWorkflowParams = {
+      planId: newPlanId,
+      taskId: existingPlan.taskId,
+      projectId: boardId,
+      userId,
+      taskDescription,
+      anthropicApiKey,
+      conversationHistory: existingPlan.conversationHistory as Array<{ role: string; content: unknown }>,
+      resumeFeedback: body.feedback,
+    };
+
+    await env.AGENT_WORKFLOW.create({
+      id: newPlanId,
+      params: workflowParams,
+    });
+
+    const plan = await boardStub.getWorkflowPlan(newPlanId);
+    return jsonResponse({ success: true, data: plan });
+  } catch (error) {
+    await boardStub.updateWorkflowPlan(newPlanId, {
+      status: 'failed',
+      result: { error: error instanceof Error ? error.message : 'Failed to resume workflow' },
+    });
+    return jsonResponse({
+      success: false,
+      error: { code: 'WORKFLOW_FAILED', message: 'Failed to resume workflow' },
+    }, 500);
+  }
+}
+
+/**
  * Handle cancel workflow request - terminates running workflow
  */
 export async function handleCancelWorkflow(

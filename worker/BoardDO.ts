@@ -54,6 +54,7 @@ export interface WorkflowPlan {
   currentStepIndex: number | null;
   checkpointData: object | null;
   result: object | null;
+  conversationHistory: object[] | null; // MessageParam[] for resume/continue
   createdAt: string;
   updatedAt: string;
 }

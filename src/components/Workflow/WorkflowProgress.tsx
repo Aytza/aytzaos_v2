@@ -10,6 +10,8 @@ interface WorkflowProgressProps {
   onDismiss?: () => void;
   onReviewCheckpoint?: () => void;
   onViewEmail?: (artifact: WorkflowArtifact) => void;
+  onResume?: (feedback: string) => Promise<void>;
+  isResuming?: boolean;
   /** Optional custom logs fetching for standalone tasks */
   customLogs?: {
     logs: import('../../types').WorkflowLog[];
@@ -23,6 +25,8 @@ export function WorkflowProgress({
   onDismiss,
   onReviewCheckpoint,
   onViewEmail,
+  onResume,
+  isResuming,
   customLogs,
 }: WorkflowProgressProps) {
   const projectContext = useProject();
@@ -31,9 +35,12 @@ export function WorkflowProgress({
   const [logsLoading, setLogsLoading] = useState(true);
   const [artifactsDropdownOpen, setArtifactsDropdownOpen] = useState(false);
   const [confirmingClear, setConfirmingClear] = useState(false);
+  const [showResumeInput, setShowResumeInput] = useState(false);
+  const [resumeFeedback, setResumeFeedback] = useState('');
   const clearButtonRef = useRef<HTMLButtonElement>(null);
   const logsEndRef = useRef<HTMLDivElement>(null);
   const stepsEndRef = useRef<HTMLDivElement>(null);
+  const resumeInputRef = useRef<HTMLInputElement>(null);
 
   // Use customLogs if provided (standalone tasks), otherwise fall back to project context
   const logs = customLogs ? customLogs.logs : (projectContext?.getWorkflowLogs(plan.id) || []);
@@ -188,6 +195,21 @@ export function WorkflowProgress({
               onSelectEmail={onViewEmail}
             />
           )}
+          {/* Continue button for resuming completed/failed workflows */}
+          {(isComplete || hasFailed) && onResume && plan.conversationHistory && plan.conversationHistory.length > 0 && (
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => {
+                setShowResumeInput(true);
+                setExpanded(true);
+                setTimeout(() => resumeInputRef.current?.focus(), 100);
+              }}
+              disabled={isResuming || showResumeInput}
+            >
+              {isResuming ? 'Resuming...' : 'Continue'}
+            </Button>
+          )}
           {(isComplete || hasFailed) && onDismiss && (
             <Button
               ref={clearButtonRef}
@@ -295,6 +317,56 @@ export function WorkflowProgress({
               )
             )}
           </div>
+
+          {/* Resume input section */}
+          {showResumeInput && onResume && (
+            <div className="workflow-resume-section">
+              <div className="resume-header">Continue with feedback:</div>
+              <form
+                className="resume-form"
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  if (resumeFeedback.trim()) {
+                    await onResume(resumeFeedback);
+                    setShowResumeInput(false);
+                    setResumeFeedback('');
+                  }
+                }}
+              >
+                <input
+                  ref={resumeInputRef}
+                  type="text"
+                  className="resume-input"
+                  placeholder="Tell the agent what to do next..."
+                  value={resumeFeedback}
+                  onChange={(e) => setResumeFeedback(e.target.value)}
+                  disabled={isResuming}
+                />
+                <div className="resume-actions">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setShowResumeInput(false);
+                      setResumeFeedback('');
+                    }}
+                    disabled={isResuming}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="submit"
+                    variant="primary"
+                    size="sm"
+                    disabled={!resumeFeedback.trim() || isResuming}
+                  >
+                    {isResuming ? 'Sending...' : 'Send'}
+                  </Button>
+                </div>
+              </form>
+            </div>
+          )}
 
         </div>
       )}

@@ -291,6 +291,7 @@ export interface WorkflowPlan {
   currentStepIndex?: number;
   checkpointData?: Record<string, unknown>;
   result?: WorkflowResult;
+  conversationHistory?: object[];
   createdAt: string;
   updatedAt: string;
 }

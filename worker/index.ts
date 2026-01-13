@@ -15,7 +15,7 @@ import {
   handleGoogleOAuthExchange,
 } from './handlers/oauth';
 import { routeProjectRequest } from './handlers/projects';
-import { handleGeneratePlan, handleResolveCheckpoint, handleCancelWorkflow } from './handlers/workflows';
+import { handleGeneratePlan, handleResolveCheckpoint, handleCancelWorkflow, handleResumeWorkflow } from './handlers/workflows';
 import type { BoardDO } from './BoardDO';
 import type { UserDO } from './UserDO';
 import type { RoadmapDO } from './RoadmapDO';
@@ -571,11 +571,10 @@ export default {
       }
 
       // Standalone task plan-specific routes: /api/tasks/:taskId/plans/:planId/*
-      const standalonePlanMatch = url.pathname.match(/^\/api\/tasks\/([^/]+)\/plans\/([^/]+)(\/.*)?$/);
+      const standalonePlanMatch = url.pathname.match(/^\/api\/tasks\/[^/]+\/plans\/([^/]+)(\/.*)?$/);
       if (standalonePlanMatch) {
-        const taskId = standalonePlanMatch[1];
-        const planId = standalonePlanMatch[2];
-        const planAction = standalonePlanMatch[3] || '';
+        const planId = standalonePlanMatch[1];
+        const planAction = standalonePlanMatch[2] || '';
         const userTasksId = `user-tasks-${user.id}`;
         const boardDoId = env.BOARD_DO.idFromName(userTasksId);
         const boardStub = env.BOARD_DO.get(boardDoId) as BoardDOStub;
@@ -588,6 +587,11 @@ export default {
         // POST /api/tasks/:taskId/plans/:planId/cancel - Cancel workflow
         if (planAction === '/cancel' && request.method === 'POST') {
           return handleCancelWorkflow(env, boardStub, userTasksId, planId);
+        }
+
+        // POST /api/tasks/:taskId/plans/:planId/resume - Resume workflow with feedback
+        if (planAction === '/resume' && request.method === 'POST') {
+          return handleResumeWorkflow(request, env, boardStub, userTasksId, planId, user.id);
         }
 
         // GET /api/tasks/:taskId/plans/:planId - Get workflow plan
@@ -621,7 +625,7 @@ export default {
           const limit = parseInt(url.searchParams.get('limit') || '100', 10);
           const offset = parseInt(url.searchParams.get('offset') || '0', 10);
           try {
-            const logs = await boardStub.getWorkflowLogs(planId, { limit, offset });
+            const logs = await boardStub.getWorkflowLogs(planId, limit, offset);
             return jsonResponse({ success: true, data: logs });
           } catch {
             return jsonResponse({

@@ -3,7 +3,7 @@
  */
 
 import { jsonResponse } from '../utils/response';
-import { handleGeneratePlan, handleResolveCheckpoint, handleCancelWorkflow } from './workflows';
+import { handleGeneratePlan, handleResolveCheckpoint, handleCancelWorkflow, handleResumeWorkflow } from './workflows';
 import type { BoardDO } from '../BoardDO';
 import type { UserDO } from '../UserDO';
 import type { AuthUser } from '../auth';
@@ -320,6 +320,12 @@ export async function routeProjectRequest(
   const cancelMatch = subPath.match(/^\/plans\/([^/]+)\/cancel$/);
   if (cancelMatch && method === 'POST') {
     return handleCancelWorkflow(env, boardStub, projectId, cancelMatch[1]);
+  }
+
+  // POST /api/projects/:id/plans/:planId/resume - Resume workflow with feedback
+  const resumeMatch = subPath.match(/^\/plans\/([^/]+)\/resume$/);
+  if (resumeMatch && method === 'POST') {
+    return handleResumeWorkflow(request, env, boardStub, projectId, resumeMatch[1], user.id);
   }
 
   // GET /api/projects/:id/plans/:planId/logs - Get workflow logs

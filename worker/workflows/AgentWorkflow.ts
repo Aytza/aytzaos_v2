@@ -46,6 +46,10 @@ export interface AgentWorkflowParams {
   customSystemPrompt?: string;
   /** Custom model from custom agent */
   agentModel?: string;
+  /** Conversation history for resume/continue (MessageParam[]) */
+  conversationHistory?: Array<{ role: string; content: unknown }>;
+  /** User feedback when resuming a workflow */
+  resumeFeedback?: string;
 }
 
 // Event sent to resume from checkpoint
@@ -149,7 +153,7 @@ function formatToolName(toolName: string): string {
 export class AgentWorkflow extends WorkflowEntrypoint<WorkflowEnv, AgentWorkflowParams> {
   async run(event: WorkflowEvent<AgentWorkflowParams>, step: WorkflowStep) {
     const params = event.payload;
-    const { planId, projectId, userId, taskDescription, anthropicApiKey, customSystemPrompt, agentModel } = params;
+    const { planId, projectId, userId, taskDescription, anthropicApiKey, customSystemPrompt, agentModel, conversationHistory, resumeFeedback } = params;
 
     const getBoardStub = (): DurableObjectStub<BoardDO> => {
       const doId = this.env.BOARD_DO.idFromName(projectId);
@@ -349,25 +353,42 @@ export class AgentWorkflow extends WorkflowEntrypoint<WorkflowEnv, AgentWorkflow
         : this.buildSystemPrompt(mcpConfig.servers);
       // Use custom model if provided, otherwise use default
       const modelToUse = agentModel || DEFAULT_MODEL;
-      const messages: MessageParam[] = [
-        { role: 'user', content: taskDescription },
-      ];
+
+      // Initialize messages - either from conversation history (resume) or fresh start
+      let messages: MessageParam[];
+      const isResume = conversationHistory && conversationHistory.length > 0;
+
+      if (isResume) {
+        // Resume: Load existing conversation history
+        messages = conversationHistory as MessageParam[];
+        // Add resume feedback as a new user message if provided
+        if (resumeFeedback) {
+          messages.push({ role: 'user', content: resumeFeedback });
+        }
+      } else {
+        // Fresh start: Begin with task description
+        messages = [{ role: 'user', content: taskDescription }];
+      }
 
       const steps: AgentStep[] = [];
       const artifacts: WorkflowArtifact[] = [];
-      let turnIndex = 0;
+      // For resume, calculate turn index based on existing assistant messages
+      const startingTurnIndex = isResume ? Math.floor(messages.filter(m => m.role === 'assistant').length) : 0;
+      let turnIndex = startingTurnIndex;
       let done = false;
+      let isFirstTurnOfSession = true;
 
       while (!done && turnIndex < 50) {
         const currentTurnIndex = turnIndex;
 
         const turnResultJson = await step.do(`turn-${currentTurnIndex}`, async () => {
-          if (currentTurnIndex === 0) {
+          // Log start/resume message on first turn of this session
+          if (isFirstTurnOfSession) {
             await updatePlan({
               status: 'executing',
               steps: [],
             });
-            await addLog('info', 'Agent started working on task');
+            await addLog('info', isResume ? 'Agent resumed working on task' : 'Agent started working on task');
           }
 
           const client = new Anthropic({ apiKey: mcpConfig.credentials.anthropicApiKey });
@@ -708,6 +729,12 @@ export class AgentWorkflow extends WorkflowEntrypoint<WorkflowEnv, AgentWorkflow
           done = true;
         }
 
+        // Save conversation history after each turn for resume capability
+        updatePlan({ conversationHistory: messages }).catch((e) =>
+          logger.workflow.error('Failed to save conversation history', { error: e instanceof Error ? e.message : String(e) })
+        );
+
+        isFirstTurnOfSession = false;
         turnIndex++;
       }
 

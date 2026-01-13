@@ -38,6 +38,7 @@ export function TaskModal({ task, isOpen, onClose }: TaskModalProps) {
   const [workflowError, setWorkflowError] = useState<string | null>(null);
   const [isApprovingPlan, setIsApprovingPlan] = useState(false);
   const [isRespondingToCheckpoint, setIsRespondingToCheckpoint] = useState(false);
+  const [isResumingWorkflow, setIsResumingWorkflow] = useState(false);
   const [selectedEmailArtifact, setSelectedEmailArtifact] = useState<WorkflowArtifact | null>(null);
 
   const { pendingUrl, isLoading: isCheckingUrl, checkUrl, clear: clearPendingUrl, toPillSyntax } = useUrlDetection(task.projectId);
@@ -87,6 +88,7 @@ export function TaskModal({ task, isOpen, onClose }: TaskModalProps) {
       setWorkflowPlan(contextPlan);
       if (contextPlan.status === 'executing' || contextPlan.status === 'completed' || contextPlan.status === 'failed') {
         setIsGeneratingPlan(false);
+        setIsResumingWorkflow(false);
       }
     }
   }, [workflowPlan?.id, workflowPlan?.updatedAt, getWorkflowPlanFromContext]);
@@ -287,6 +289,20 @@ export function TaskModal({ task, isOpen, onClose }: TaskModalProps) {
     setIsRespondingToCheckpoint(false);
   };
 
+  const handleResumeWorkflow = async (feedback: string) => {
+    if (!workflowPlan || !activeProject) return;
+    setIsResumingWorkflow(true);
+    setWorkflowError(null);
+    const result = await api.resumeWorkflow(activeProject.id, workflowPlan.id, feedback);
+    if (result.success && result.data) {
+      setWorkflowPlan(result.data);
+      updateWorkflowPlanInContext(result.data);
+    } else {
+      setWorkflowError(result.error?.message || 'Failed to resume workflow');
+      setIsResumingWorkflow(false);
+    }
+  };
+
   // Render content based on current view
   const renderContent = () => {
     // Plan Review (wizard pattern)
@@ -396,6 +412,8 @@ export function TaskModal({ task, isOpen, onClose }: TaskModalProps) {
                       setSelectedEmailArtifact(artifact);
                       setCurrentView('email-view');
                     }}
+                    onResume={handleResumeWorkflow}
+                    isResuming={isResumingWorkflow}
                   />
                 );
               })()}

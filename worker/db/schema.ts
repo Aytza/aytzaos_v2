@@ -199,6 +199,13 @@ function runMigrations(sql: SqlStorage): void {
   } catch {
     // Column already exists
   }
+
+  // Add conversation_history column to workflow_plans for resume/continue feature
+  try {
+    sql.exec('ALTER TABLE workflow_plans ADD COLUMN conversation_history TEXT');
+  } catch {
+    // Column already exists
+  }
 }
 
 /**
