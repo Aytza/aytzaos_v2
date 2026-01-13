@@ -378,14 +378,23 @@ After the user responds, you'll receive their answers in the approval result. Us
 - Maximum 4 questions per request`;
 
 const SCOUT_GUIDANCE = `## Company Scouting
-Use Scout for efficient company research. It automatically:
+**IMPORTANT: For ANY task involving finding, researching, or listing companies, ALWAYS use Scout__scout_companies FIRST.**
+
+This includes queries like:
+- "Find me [type] companies"
+- "List companies in [industry]"
+- "Research companies that [criteria]"
+- "Who are the players in [market]"
+- Any request for company lists, competitors, or market research
+
+Scout automatically:
 1. Generates 7-10 diverse search queries from your criteria
-2. Runs all searches in parallel
+2. Runs all searches in parallel (much faster than manual searches)
 3. Extracts structured company data (name, website, reason)
 4. Deduplicates by domain
 5. Scores and ranks by relevance
 
-**Finding companies:**
+**Usage:**
 \`\`\`
 Scout__scout_companies({
   criteria: "DTC GLP-1 companies that have raised more than $10M",
@@ -395,10 +404,10 @@ Scout__scout_companies({
 \`\`\`
 
 Tips:
-- Be specific in criteria: industry, funding stage, business model, geography
-- Use minRelevanceScore to filter noise (default 60, use 70+ for stricter)
-- Results include company name, website, domain, reason, and relevance score
-- Much faster than running individual searches manually`;
+- Pass the user's query directly as the criteria
+- Use minRelevanceScore 70+ for stricter filtering
+- Results include: company name, website, domain, reason, relevance score
+- Do NOT use Exa__web_search_exa for company research - Scout is 10x more efficient`;
 
 // ============================================================================
 // Registry
