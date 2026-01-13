@@ -832,7 +832,16 @@ export class AgentWorkflow extends WorkflowEntrypoint<WorkflowEnv, AgentWorkflow
     const serverNames = servers.map(s => s.name.replace(/\s+/g, '_'));
     const workflowGuidance = getWorkflowGuidance(serverNames);
 
+    const currentDate = new Date().toLocaleDateString('en-US', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+
     return `You are a helpful AI assistant that accomplishes tasks using available tools.
+
+**Today's date:** ${currentDate}
 
 ## CRITICAL: First Step for Every Task
 **Your very first action for ANY task must be to ask clarifying questions using AskUser.**
@@ -898,7 +907,16 @@ When providing final outputs to the user:
     const serverNames = servers.map(s => s.name.replace(/\s+/g, '_'));
     const workflowGuidance = getWorkflowGuidance(serverNames);
 
+    const currentDate = new Date().toLocaleDateString('en-US', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+
     return `${customPrompt}
+
+**Today's date:** ${currentDate}
 
 ## CRITICAL: First Step for Every Task
 **Your very first action for ANY task must be to ask clarifying questions using AskUser.**
