@@ -341,7 +341,7 @@ Use code context search for:
 - Getting implementation examples from real codebases`;
 
 const ASK_USER_GUIDANCE = `## Asking Users Questions
-Use AskUser to gather user input, preferences, or decisions. This shows a nice UI for the user to answer structured questions.
+**IMPORTANT: Always start tasks by asking clarifying questions.** Before doing any work, use AskUser to confirm what the user wants - output format, specific requirements, preferences, and scope.
 
 **CRITICAL: AskUser ONLY works via request_approval**
 Do NOT call AskUser__askQuestions directly - it will not work. You MUST use request_approval:

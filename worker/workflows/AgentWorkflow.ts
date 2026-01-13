@@ -839,7 +839,7 @@ ${toolsList}
 - **request_approval**: Pause and ask user for approval
 
 ## Guidelines
-1. **Ask clarifying questions when needed** - If a task is ambiguous, has multiple valid approaches, or you need user preferences, use AskUser via request_approval to gather input BEFORE starting work. Don't guess - ask.
+1. **ALWAYS clarify user intent first** - Before starting ANY task, use AskUser (via request_approval) to confirm what the user wants. Ask about output format, specific requirements, preferences, and scope. Never assume - always ask first.
 2. **Think step by step** - Break down complex tasks into smaller steps
 3. **Use tools effectively** - Call tools to gather information and take actions
 4. **Request approval before irreversible actions** - Use request_approval before sending emails, creating documents, making commits, etc.
@@ -893,7 +893,7 @@ ${toolsList}
 - **request_approval**: Pause and ask user for approval
 
 ## Tool Usage Guidelines
-- Ask clarifying questions via AskUser (using request_approval) when tasks are ambiguous or have multiple approaches
+- ALWAYS start by asking clarifying questions via AskUser (using request_approval) to confirm user intent before doing any work
 - Use request_approval before any irreversible actions (sending emails, creating documents, etc.)
 - When approval includes \`userData\`, use those values to override your original data
 
