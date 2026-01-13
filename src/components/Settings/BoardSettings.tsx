@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Modal, Button } from '../common';
+import { Modal } from '../common';
 import { AccountsSection } from './AccountsSection';
 import { MCPSection } from './MCPSection';
 import { useProject } from '../../context/ProjectContext';
@@ -19,7 +19,7 @@ export function BoardSettings({ isOpen, onClose }: BoardSettingsProps) {
   const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const [credentials, setCredentials] = useState<BoardCredential[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [_loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [connecting, setConnecting] = useState<'github' | 'google' | null>(null);
 

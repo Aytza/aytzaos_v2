@@ -1,243 +1,111 @@
-import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useProject } from '../../context/ProjectContext';
-import { Button, Modal, Input } from '../common';
 import './Home.css';
 
 export function Home() {
   const navigate = useNavigate();
-  const { projects, createProject, renameProject, deleteProject, loading } = useProject();
-  const [searchQuery, setSearchQuery] = useState('');
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [newProjectName, setNewProjectName] = useState('');
-  const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
-  const [renameModalProject, setRenameModalProject] = useState<{ id: string; name: string } | null>(null);
-  const [deleteModalProject, setDeleteModalProject] = useState<{ id: string; name: string } | null>(null);
-  const [renameName, setRenameName] = useState('');
-  const menuRef = useRef<HTMLDivElement>(null);
 
-  // Close menu when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setMenuOpenId(null);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  const filteredProjects = projects.filter((project) =>
-    project.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  const handleCreateProject = async () => {
-    if (newProjectName.trim()) {
-      const projectId = await createProject(newProjectName.trim());
-      setNewProjectName('');
-      setShowCreateModal(false);
-      if (projectId) {
-        navigate(`/project/${projectId}`);
-      }
-    }
-  };
-
-  const handleSelectProject = (projectId: string) => {
-    navigate(`/project/${projectId}`);
-  };
-
-  const handleRename = async () => {
-    if (renameModalProject && renameName.trim()) {
-      await renameProject(renameModalProject.id, renameName.trim());
-      setRenameModalProject(null);
-      setRenameName('');
-    }
-  };
-
-  const handleDelete = async () => {
-    if (deleteModalProject) {
-      await deleteProject(deleteModalProject.id);
-      setDeleteModalProject(null);
-    }
-  };
-
-  const openRenameModal = (project: { id: string; name: string }) => {
-    setRenameName(project.name);
-    setRenameModalProject(project);
-    setMenuOpenId(null);
-  };
-
-  const openDeleteModal = (project: { id: string; name: string }) => {
-    setDeleteModalProject(project);
-    setMenuOpenId(null);
-  };
+  const products = [
+    {
+      id: 'roadmap',
+      name: 'Product Roadmap',
+      description: 'Plan and visualize your product journey with timeline views and milestone tracking.',
+      icon: '📍',
+      path: '/roadmap',
+      color: 'purple',
+    },
+    {
+      id: 'bugs',
+      name: 'Bug Tracker',
+      description: 'Track, triage, and resolve issues with priority management and status workflows.',
+      icon: '🐛',
+      path: '/bugs',
+      color: 'teal',
+    },
+    {
+      id: 'tasks',
+      name: 'Standalone Tasks',
+      description: 'Quick AI-powered tasks without project context. More agent types coming soon.',
+      icon: '⚡',
+      path: '/tasks',
+      color: 'gold',
+      badge: 'AI Agents',
+    },
+    {
+      id: 'projects',
+      name: 'Projects',
+      description: 'Full kanban boards with columns, tasks, and AI agent workflows for complex work.',
+      icon: '📋',
+      path: '/projects',
+      color: 'blue',
+    },
+  ];
 
   return (
-    <div className="home">
-      <div className="home-container">
-        <div className="home-header">
-          <h1 className="home-title">&gt; Projects</h1>
-          <Button variant="primary" onClick={() => setShowCreateModal(true)}>
-            + New Project
-          </Button>
-        </div>
-
-        <div className="home-search">
-          <Input
-            placeholder="Search projects..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-        </div>
-
-        {loading ? (
-          <div className="home-loading">Loading projects...</div>
-        ) : filteredProjects.length === 0 ? (
-          <div className="home-empty">
-            {searchQuery ? (
-              <p>No projects matching "{searchQuery}"</p>
-            ) : (
-              <>
-                <p>No projects yet</p>
-                <Button variant="ghost" onClick={() => setShowCreateModal(true)}>
-                  Create your first project
-                </Button>
-              </>
-            )}
+    <div className="landing">
+      {/* Hero Section */}
+      <section className="hero">
+        <div className="hero-content">
+          <div className="hero-badge">
+            <span className="hero-badge-icon">✦</span>
+            <span>AI-POWERED INTERNAL OS</span>
           </div>
-        ) : (
-          <div className="home-boards">
-            {filteredProjects.map((project) => (
-              <div
-                key={project.id}
-                className="board-card"
-                onClick={() => handleSelectProject(project.id)}
-                ref={menuOpenId === project.id ? menuRef : null}
-              >
-                <span className="board-card-name">{project.name}</span>
-                <div className="board-card-right">
-                  <span className="board-card-meta">
-                    {new Date(project.createdAt).toLocaleDateString()}
-                  </span>
-                  <button
-                    className="board-card-menu-trigger"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setMenuOpenId(menuOpenId === project.id ? null : project.id);
-                    }}
-                  >
-                    ⋯
-                  </button>
-                </div>
-                {menuOpenId === project.id && (
-                  <div className="board-card-dropdown">
-                    <button onClick={(e) => { e.stopPropagation(); openRenameModal(project); }}>Rename</button>
-                    <button className="danger" onClick={(e) => { e.stopPropagation(); openDeleteModal(project); }}>Delete</button>
-                  </div>
+
+          <h1 className="hero-title">
+            Your team's
+            <br />
+            operating system
+            <span className="hero-title-accent"> for getting things done.</span>
+          </h1>
+
+          <p className="hero-description">
+            Aytza combines intelligent task management with AI agents that work alongside your team.
+            Plan roadmaps, track bugs, and let AI handle the routine work.
+          </p>
+
+          <div className="hero-features">
+            <span className="hero-feature">ROADMAP PLANNING</span>
+            <span className="hero-feature">BUG TRACKING</span>
+            <span className="hero-feature">AI AGENTS</span>
+          </div>
+        </div>
+
+        <div className="hero-shapes">
+          <div className="shape shape-purple"></div>
+          <div className="shape shape-teal"></div>
+          <div className="shape shape-gold"></div>
+        </div>
+      </section>
+
+      {/* Products Section */}
+      <section className="products">
+        <div className="products-header">
+          <h2 className="products-title">Tools in Aytza Workspace</h2>
+          <p className="products-description">
+            Everything you need to manage work and ship faster. Each tool is designed to work
+            independently or together as part of your workflow.
+          </p>
+        </div>
+
+        <div className="products-grid">
+          {products.map((product) => (
+            <button
+              key={product.id}
+              className={`product-card product-card-${product.color}`}
+              onClick={() => navigate(product.path)}
+            >
+              <div className="product-card-header">
+                <span className="product-card-icon">{product.icon}</span>
+                {product.badge && (
+                  <span className="product-card-badge">{product.badge}</span>
                 )}
               </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      <Modal
-        isOpen={showCreateModal}
-        onClose={() => setShowCreateModal(false)}
-        title="Create New Project"
-        width="sm"
-      >
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            handleCreateProject();
-          }}
-        >
-          <div className="modal-form">
-            <Input
-              label="Project Name"
-              placeholder="My Project"
-              value={newProjectName}
-              onChange={(e) => setNewProjectName(e.target.value)}
-              autoFocus
-            />
-            <div className="modal-actions">
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={() => setShowCreateModal(false)}
-              >
-                Cancel
-              </Button>
-              <Button type="submit" variant="primary">
-                Create Project
-              </Button>
-            </div>
-          </div>
-        </form>
-      </Modal>
-
-      {/* Rename Modal */}
-      <Modal
-        isOpen={!!renameModalProject}
-        onClose={() => setRenameModalProject(null)}
-        title="Rename Project"
-        width="sm"
-      >
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            handleRename();
-          }}
-        >
-          <div className="modal-form">
-            <Input
-              label="Project Name"
-              value={renameName}
-              onChange={(e) => setRenameName(e.target.value)}
-              autoFocus
-            />
-            <div className="modal-actions">
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={() => setRenameModalProject(null)}
-              >
-                Cancel
-              </Button>
-              <Button type="submit" variant="primary">
-                Rename
-              </Button>
-            </div>
-          </div>
-        </form>
-      </Modal>
-
-      {/* Delete Confirmation Modal */}
-      <Modal
-        isOpen={!!deleteModalProject}
-        onClose={() => setDeleteModalProject(null)}
-        title="Delete Project"
-        width="sm"
-      >
-        <div className="modal-form">
-          <p className="delete-warning">
-            Are you sure you want to delete "{deleteModalProject?.name}"? This action cannot be undone.
-          </p>
-          <div className="modal-actions">
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => setDeleteModalProject(null)}
-            >
-              Cancel
-            </Button>
-            <Button variant="danger" onClick={handleDelete}>
-              Delete
-            </Button>
-          </div>
+              <h3 className="product-card-name">{product.name}</h3>
+              <p className="product-card-description">{product.description}</p>
+              <span className="product-card-arrow">→</span>
+            </button>
+          ))}
         </div>
-      </Modal>
+      </section>
     </div>
   );
 }

@@ -9,6 +9,7 @@ import { Board } from './components/Board/Board';
 import { Tasks } from './components/Tasks';
 import { Roadmap } from './components/Roadmap';
 import { BugBoard } from './components/BugBoard';
+import { Projects } from './components/Projects';
 import { GitHubCallback } from './components/GitHubCallback';
 import { GoogleCallback } from './components/GoogleCallback';
 import { MCPOAuthCallback } from './components/MCP/MCPOAuthCallback';
@@ -124,6 +125,7 @@ function AppContent() {
             <Route path="/board/:projectId" element={<Board />} />
             <Route path="/roadmap" element={<Roadmap />} />
             <Route path="/bugs" element={<BugBoard />} />
+            <Route path="/projects" element={<Projects />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </main>
