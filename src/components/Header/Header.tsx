@@ -26,10 +26,11 @@ export function Header() {
   const executionsRef = useRef<HTMLDivElement>(null);
   const userMenuRef = useRef<HTMLDivElement>(null);
 
-  const isHome = location.pathname === '/';
   const isTasksPage = location.pathname === '/tasks';
   const isRoadmap = location.pathname === '/roadmap';
   const isBugs = location.pathname === '/bugs';
+  const isProjects = location.pathname === '/projects';
+  const isProjectPage = location.pathname.startsWith('/project/');
 
   // Auto-open settings modal when returning from GitHub OAuth
   useEffect(() => {
@@ -91,6 +92,12 @@ export function Header() {
         <WeftLogo onClick={handleGoHome} />
         <nav className="header-nav">
           <button
+            className={`header-nav-link ${isProjects || isProjectPage ? 'active' : ''}`}
+            onClick={() => navigate('/projects')}
+          >
+            Projects
+          </button>
+          <button
             className={`header-nav-link ${isRoadmap ? 'active' : ''}`}
             onClick={() => navigate('/roadmap')}
           >
@@ -106,7 +113,7 @@ export function Header() {
       </div>
 
       <div className="header-center">
-        {!isHome && (
+        {isProjectPage && (
           <div className="board-selector-wrapper" ref={dropdownRef}>
             <button
               className="board-selector-trigger"
@@ -162,7 +169,7 @@ export function Header() {
         </button>
 
         {/* Active Agents dropdown */}
-        {!isHome && !isTasksPage && activeProject && (
+        {isProjectPage && activeProject && (
           <div className="executions-wrapper" ref={executionsRef}>
             <button
               className={`executions-trigger ${activeWorkflows.length === 0 ? 'executions-trigger-empty' : ''}`}
@@ -249,7 +256,7 @@ export function Header() {
         )}
 
         {/* Project Settings - separate from user menu since it's project-scoped */}
-        {!isHome && !isTasksPage && activeProject && (
+        {isProjectPage && activeProject && (
           <button
             className="header-settings-btn"
             onClick={() => setShowSettings(true)}
