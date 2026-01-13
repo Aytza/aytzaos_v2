@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Modal } from '../common';
-import { AccountsSection } from './AccountsSection';
 import { MCPSection } from './MCPSection';
 import { useProject } from '../../context/ProjectContext';
 import { useAuth } from '../../context/AuthContext';
@@ -21,7 +20,7 @@ export function BoardSettings({ isOpen, onClose }: BoardSettingsProps) {
   const [credentials, setCredentials] = useState<BoardCredential[]>([]);
   const [_loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [connecting, setConnecting] = useState<'github' | 'google' | null>(null);
+  const [connecting, setConnecting] = useState<'github' | null>(null);
 
   // Check if Anthropic API key is configured via environment
   const anthropicConfiguredViaEnv = user?.config?.anthropicApiKeyConfigured ?? false;
@@ -30,8 +29,6 @@ export function BoardSettings({ isOpen, onClose }: BoardSettingsProps) {
   useEffect(() => {
     const githubConnected = searchParams.get('github');
     const githubError = searchParams.get('github_error');
-    const googleConnected = searchParams.get('google');
-    const googleError = searchParams.get('google_error');
 
     if (githubConnected === 'connected') {
       if (activeProject) {
@@ -44,20 +41,6 @@ export function BoardSettings({ isOpen, onClose }: BoardSettingsProps) {
     if (githubError) {
       setError(`GitHub connection failed: ${githubError}`);
       searchParams.delete('github_error');
-      setSearchParams(searchParams, { replace: true });
-    }
-
-    if (googleConnected === 'connected') {
-      if (activeProject) {
-        loadCredentials();
-      }
-      searchParams.delete('google');
-      setSearchParams(searchParams, { replace: true });
-    }
-
-    if (googleError) {
-      setError(`Google connection failed: ${googleError}`);
-      searchParams.delete('google_error');
       setSearchParams(searchParams, { replace: true });
     }
   }, [searchParams, setSearchParams, activeProject]);
@@ -81,30 +64,18 @@ export function BoardSettings({ isOpen, onClose }: BoardSettingsProps) {
     }
   }, [isOpen, activeProject, loadCredentials]);
 
-  const handleDeleteCredential = async (credentialId: string) => {
+  const handleConnectGitHub = async () => {
     if (!activeProject) return;
 
-    const result = await api.deleteCredential(activeProject.id, credentialId);
-    if (result.success) {
-      setCredentials((prev) => prev.filter((c) => c.id !== credentialId));
-    } else {
-      setError(result.error?.message || 'Failed to delete credential');
-    }
-  };
-
-  const handleConnect = async (provider: 'github' | 'google') => {
-    if (!activeProject) return;
-
-    setConnecting(provider);
+    setConnecting('github');
     setError(null);
 
-    const getUrl = provider === 'github' ? api.getGitHubOAuthUrl : api.getGoogleOAuthUrl;
-    const result = await getUrl(activeProject.id);
+    const result = await api.getGitHubOAuthUrl(activeProject.id);
 
     if (result.success && result.data) {
       window.location.href = result.data.url;
     } else {
-      setError(result.error?.message || `Failed to connect ${provider}`);
+      setError(result.error?.message || 'Failed to connect GitHub');
       setConnecting(null);
     }
   };
@@ -145,20 +116,8 @@ export function BoardSettings({ isOpen, onClose }: BoardSettingsProps) {
           )}
         </section>
 
-        {/* Connected Accounts Section */}
-        <section className="settings-section">
-          <div className="settings-section-header">
-            <h3 className="settings-section-title">Connected Accounts</h3>
-            <span className="settings-section-hint">Authenticate with services that have multiple integrations</span>
-          </div>
-
-          <AccountsSection
-            credentials={credentials}
-            onConnect={(accountId) => handleConnect(accountId as 'github' | 'google')}
-            onDisconnect={handleDeleteCredential}
-            connecting={connecting}
-          />
-        </section>
+        {/* Connected Accounts Section - Hidden when no OAuth accounts exist */}
+        {/* Google now uses service account (env vars), so no per-user OAuth needed */}
 
         {/* MCP Servers Section */}
         <section className="settings-section">
@@ -170,7 +129,7 @@ export function BoardSettings({ isOpen, onClose }: BoardSettingsProps) {
           <MCPSection
             projectId={activeProject.id}
             credentials={credentials}
-            onConnectGitHub={() => handleConnect('github')}
+            onConnectGitHub={handleConnectGitHub}
             connectingGitHub={connecting === 'github'}
           />
         </section>

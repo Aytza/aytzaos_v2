@@ -1,5 +1,6 @@
 /**
- * OAuth handlers for GitHub and Google
+ * OAuth handlers for GitHub
+ * (Google now uses service account - see worker/google/serviceAuth.ts)
  */
 
 import {
@@ -8,11 +9,6 @@ import {
   getUser as getGitHubUser,
   generateState,
 } from '../github/oauth';
-import {
-  getOAuthUrl as getGoogleOAuthUrl,
-  exchangeCodeForToken as exchangeGoogleCode,
-  getUserInfo as getGoogleUser,
-} from '../google/oauth';
 import { getAccountByCredentialType, getMCPTools, getMCPDefinition } from '../mcp/AccountMCPRegistry';
 import { encodeOAuthState, decodeOAuthState } from '../utils/oauth-state';
 import { jsonResponse } from '../utils/response';
@@ -26,7 +22,7 @@ type BoardDOStub = DurableObjectStub<BoardDO>;
 // ============================================
 
 interface OAuthProvider {
-  name: 'github' | 'google';
+  name: 'github';
   credentialType: string;
   getClientId: (env: Env) => string | undefined;
   getClientSecret: (env: Env) => string | undefined;
@@ -72,30 +68,6 @@ const githubProvider: OAuthProvider = {
     },
   }),
   callbackPath: '/github/callback',
-};
-
-const googleProvider: OAuthProvider = {
-  name: 'google',
-  credentialType: CREDENTIAL_TYPES.GOOGLE_OAUTH,
-  getClientId: (env) => env.GOOGLE_CLIENT_ID,
-  getClientSecret: (env) => env.GOOGLE_CLIENT_SECRET,
-  getOAuthUrl: getGoogleOAuthUrl,
-  exchangeCode: exchangeGoogleCode,
-  getUser: getGoogleUser,
-  buildCredential: (user, tokenData) => ({
-    name: `Google: ${user.email}`,
-    metadata: {
-      email: user.email,
-      userId: user.id,
-      name: user.name,
-      picture: user.picture,
-      scope: tokenData.scope,
-      refresh_token: tokenData.refresh_token,
-      expires_in: tokenData.expires_in,
-      expires_at: new Date(Date.now() + (tokenData.expires_in || 3600) * 1000).toISOString(),
-    },
-  }),
-  callbackPath: '/google/callback',
 };
 
 // ============================================
@@ -321,14 +293,6 @@ export async function handleGitHubOAuthCallback(
       error instanceof Error ? error.message : 'OAuth failed'
     );
   }
-}
-
-export function handleGoogleOAuthUrl(request: Request, env: Env, url: URL): Promise<Response> {
-  return handleOAuthUrl(request, env, url, googleProvider);
-}
-
-export function handleGoogleOAuthExchange(_request: Request, env: Env, url: URL): Promise<Response> {
-  return handleOAuthExchange(env, url, googleProvider);
 }
 
 function redirectWithError(origin: string, error: string): Response {

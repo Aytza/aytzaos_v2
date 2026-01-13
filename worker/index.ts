@@ -11,8 +11,6 @@ import {
   handleGitHubOAuthUrl,
   handleGitHubOAuthExchange,
   handleGitHubOAuthCallback,
-  handleGoogleOAuthUrl,
-  handleGoogleOAuthExchange,
 } from './handlers/oauth';
 import { routeProjectRequest } from './handlers/projects';
 import { handleGeneratePlan, handleResolveCheckpoint, handleCancelWorkflow } from './handlers/workflows';
@@ -56,15 +54,6 @@ export default {
     // Legacy callback route (for direct browser navigation)
     if (url.pathname === '/api/github/oauth/callback') {
       return handleGitHubOAuthCallback(request, env, url);
-    }
-
-    // Google OAuth routes
-    if (url.pathname === '/api/google/oauth/url') {
-      return handleGoogleOAuthUrl(request, env, url);
-    }
-
-    if (url.pathname === '/api/google/oauth/exchange') {
-      return handleGoogleOAuthExchange(request, env, url);
     }
 
     // ============================================

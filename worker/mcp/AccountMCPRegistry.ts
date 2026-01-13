@@ -17,7 +17,6 @@ import { SandboxMCPServer } from '../sandbox/SandboxMCP';
 import { GitHubMCPServer } from '../github/GitHubMCP';
 import { ExaMCPServer } from '../exa/ExaMCP';
 import { AskUserMCPServer } from '../askUser/AskUserMCP';
-import { refreshAccessToken } from '../google/oauth';
 import { CREDENTIAL_TYPES } from '../constants';
 import type { Sandbox } from '@cloudflare/sandbox';
 
@@ -26,7 +25,7 @@ import type { Sandbox } from '@cloudflare/sandbox';
 // ============================================================================
 
 /** How authentication is handled for this account */
-export type CredentialAuthType = 'oauth' | 'api_key' | 'env_binding' | 'none';
+export type CredentialAuthType = 'oauth' | 'api_key' | 'env_binding' | 'service_account' | 'none';
 
 /** Artifact types that can be created by MCP tools */
 export type ArtifactType = 'google_doc' | 'google_sheet' | 'gmail_message' | 'github_pr' | 'file' | 'other';
@@ -384,11 +383,11 @@ export const ACCOUNT_REGISTRY: AccountDefinition[] = [
   {
     id: 'google',
     name: 'Google',
-    credentialType: CREDENTIAL_TYPES.GOOGLE_OAUTH,
-    authType: 'oauth',
+    credentialType: 'none', // No per-user credential needed - uses service account
+    authType: 'service_account',
     icon: 'google',
-    refreshToken: refreshAccessToken,
-    envBindingKeys: ['GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET'],
+    alwaysEnabled: true, // Available when service account is configured
+    envBindingKeys: ['GOOGLE_SERVICE_ACCOUNT_EMAIL', 'GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY', 'GOOGLE_IMPERSONATE_EMAIL'],
     mcps: [
       {
         id: 'gmail',

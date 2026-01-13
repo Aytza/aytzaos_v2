@@ -427,16 +427,6 @@ export async function getGitHubRepos(
 }
 
 // ============================================
-// GOOGLE
-// ============================================
-
-export async function getGoogleOAuthUrl(
-  projectId: string
-): Promise<ApiResponse<{ url: string }>> {
-  return request<{ url: string }>(`/google/oauth/url?projectId=${encodeURIComponent(projectId)}`);
-}
-
-// ============================================
 // MCP SERVERS
 // ============================================
 

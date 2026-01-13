@@ -25,6 +25,7 @@ import {
   type MCPEnvBindings,
   type AccountDefinition,
 } from '../mcp/AccountMCPRegistry';
+import { getServiceAccountToken, isServiceAccountConfigured } from '../google/serviceAuth';
 import { MCPClient, type MCPServerConfig } from '../mcp/MCPClient';
 import { logger } from '../utils/logger';
 import type { BoardDO } from '../BoardDO';
@@ -260,6 +261,13 @@ export class AgentWorkflow extends WorkflowEntrypoint<WorkflowEnv, AgentWorkflow
         }
 
         for (const account of getAlwaysEnabledAccounts()) {
+          // Skip service_account types if credentials not configured
+          if (account.authType === 'service_account') {
+            if (!isServiceAccountConfigured(this.env as Record<string, unknown>)) {
+              logger.workflow.info('Skipping service account MCPs - not configured', { account: account.id });
+              continue;
+            }
+          }
           for (const mcp of account.mcps) {
             const tools = getMCPTools(account.id, mcp.id);
             servers.push({
@@ -1049,6 +1057,18 @@ ${workflowGuidance}`;
 
     if (account.authType === 'oauth') {
       const accessToken = await this.ensureValidToken(account, credentials);
+      mcpCredentials.accessToken = accessToken;
+    } else if (account.authType === 'service_account') {
+      // Get access token from service account (for Google)
+      const env = this.env as Record<string, unknown>;
+      if (!isServiceAccountConfigured(env)) {
+        throw new Error(`${account.name} service account not configured. Set GOOGLE_SERVICE_ACCOUNT_EMAIL, GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY, and GOOGLE_IMPERSONATE_EMAIL.`);
+      }
+      const accessToken = await getServiceAccountToken({
+        serviceAccountEmail: env.GOOGLE_SERVICE_ACCOUNT_EMAIL as string,
+        privateKey: env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY as string,
+        impersonateEmail: env.GOOGLE_IMPERSONATE_EMAIL as string,
+      });
       mcpCredentials.accessToken = accessToken;
     }
 

@@ -11,7 +11,6 @@ import { Roadmap } from './components/Roadmap';
 import { BugBoard } from './components/BugBoard';
 import { Projects } from './components/Projects';
 import { GitHubCallback } from './components/GitHubCallback';
-import { GoogleCallback } from './components/GoogleCallback';
 import { MCPOAuthCallback } from './components/MCP/MCPOAuthCallback';
 import { CommandPalette } from './components/CommandPalette';
 import { ToastContainer, WorkflowToastListener } from './components/Toast';
@@ -19,7 +18,7 @@ import { ErrorBoundary } from './components/common';
 import './App.css';
 
 // Full-page callback routes (no header/layout)
-const CALLBACK_ROUTES = ['/github/callback', '/google/callback', '/mcp/oauth/callback'];
+const CALLBACK_ROUTES = ['/github/callback', '/mcp/oauth/callback'];
 
 function AuthGate({ children }: { children: React.ReactNode }) {
   const { isLoading, error } = useAuth();
@@ -106,7 +105,6 @@ function AppContent() {
     return (
       <Routes>
         <Route path="/github/callback" element={<GitHubCallback />} />
-        <Route path="/google/callback" element={<GoogleCallback />} />
         <Route path="/mcp/oauth/callback" element={<MCPOAuthCallback />} />
       </Routes>
     );
