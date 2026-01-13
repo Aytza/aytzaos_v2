@@ -16,6 +16,7 @@ import { SheetsMCPServer } from '../google/SheetsMCP';
 import { SandboxMCPServer } from '../sandbox/SandboxMCP';
 import { GitHubMCPServer } from '../github/GitHubMCP';
 import { ExaMCPServer } from '../exa/ExaMCP';
+import { ScoutMCPServer } from '../scout/ScoutMCP';
 import { AskUserMCPServer } from '../askUser/AskUserMCP';
 import { refreshAccessToken } from '../google/oauth';
 import { CREDENTIAL_TYPES } from '../constants';
@@ -376,6 +377,29 @@ After the user responds, you'll receive their answers in the approval result. Us
 - allowOther: true (default) lets users provide custom responses
 - Maximum 4 questions per request`;
 
+const SCOUT_GUIDANCE = `## Company Scouting
+Use Scout for efficient company research. It automatically:
+1. Generates 7-10 diverse search queries from your criteria
+2. Runs all searches in parallel
+3. Extracts structured company data (name, website, reason)
+4. Deduplicates by domain
+5. Scores and ranks by relevance
+
+**Finding companies:**
+\`\`\`
+Scout__scout_companies({
+  criteria: "DTC GLP-1 companies that have raised more than $10M",
+  maxResults: 20,
+  minRelevanceScore: 60
+})
+\`\`\`
+
+Tips:
+- Be specific in criteria: industry, funding stage, business model, geography
+- Use minRelevanceScore to filter noise (default 60, use 70+ for stricter)
+- Results include company name, website, domain, reason, and relevance score
+- Much faster than running individual searches manually`;
+
 // ============================================================================
 // Registry
 // ============================================================================
@@ -507,6 +531,28 @@ export const ACCOUNT_REGISTRY: AccountDefinition[] = [
         description: 'Web search and code context powered by Exa AI',
         factory: (_creds, env) => new ExaMCPServer(env?.EXA_API_KEY as string || ''),
         workflowGuidance: EXA_GUIDANCE,
+      },
+    ],
+  },
+  {
+    id: 'scout',
+    name: 'Scout',
+    credentialType: 'none',
+    authType: 'env_binding',
+    alwaysEnabled: true,
+    envBindingKeys: ['EXA_API_KEY'],
+    additionalCredentialKeys: ['anthropicApiKey'],
+    mcps: [
+      {
+        id: 'scout',
+        name: 'Scout',
+        serverName: 'Scout',
+        description: 'Find and research companies matching specific criteria',
+        factory: (creds, env) => new ScoutMCPServer(
+          env?.EXA_API_KEY as string || '',
+          creds.anthropicApiKey as string || ''
+        ),
+        workflowGuidance: SCOUT_GUIDANCE,
       },
     ],
   },
