@@ -7,6 +7,7 @@ import { Header } from './components/Header/Header';
 import { Home } from './components/Home/Home';
 import { Board } from './components/Board/Board';
 import { Tasks } from './components/Tasks';
+import { CompanyScout } from './components/CompanyScout';
 import { Roadmap } from './components/Roadmap';
 import { BugBoard } from './components/BugBoard';
 import { Projects } from './components/Projects';
@@ -120,6 +121,7 @@ function AppContent() {
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/tasks" element={<Tasks />} />
+            <Route path="/scout" element={<CompanyScout />} />
             <Route path="/project/:projectId" element={<Board />} />
             {/* Backward compatibility for old board URLs */}
             <Route path="/board/:projectId" element={<Board />} />

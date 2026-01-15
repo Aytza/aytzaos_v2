@@ -63,7 +63,7 @@ export function Home() {
     {
       id: 'company-scout',
       name: 'Company Scout',
-      description: 'Research companies, competitors, and market opportunities with AI assistance.',
+      description: 'Find and evaluate companies with AI-powered research. Get fit scores and export to Google Sheets.',
       icon: (
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <circle cx="11" cy="11" r="8" />
@@ -72,7 +72,7 @@ export function Home() {
           <path d="M8 11h6" />
         </svg>
       ),
-      path: '/tasks?type=company-scout',
+      path: '/scout',
       color: 'teal',
     },
     {

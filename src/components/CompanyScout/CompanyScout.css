@@ -1,0 +1,155 @@
+/* CompanyScout.css - Main styles for Company Scout page */
+
+.company-scout {
+  min-height: calc(100vh - var(--header-height, 60px));
+  background: var(--color-bg);
+}
+
+.scout-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: var(--spacing-xl);
+}
+
+/* Input Section */
+.scout-input-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+  padding: var(--spacing-2xl) 0;
+}
+
+.scout-input-container {
+  width: 100%;
+  max-width: 600px;
+  text-align: center;
+}
+
+.scout-title {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: var(--color-text);
+  margin: 0 0 var(--spacing-sm) 0;
+  letter-spacing: -0.02em;
+}
+
+.scout-subtitle {
+  font-size: 1.1rem;
+  color: var(--color-text-secondary);
+  margin: 0 0 var(--spacing-xl) 0;
+}
+
+.scout-search-box {
+  display: flex;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-lg);
+}
+
+.scout-search-box input {
+  flex: 1;
+  font-size: 1rem;
+  padding: var(--spacing-md) var(--spacing-lg);
+}
+
+.scout-search-box button {
+  white-space: nowrap;
+  padding: var(--spacing-md) var(--spacing-xl);
+}
+
+/* Example queries */
+.scout-examples {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--spacing-sm);
+  margin-top: var(--spacing-md);
+}
+
+.scout-examples-label {
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
+}
+
+.scout-example {
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  padding: var(--spacing-xs) var(--spacing-md);
+  font-size: 0.8125rem;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.scout-example:hover {
+  background: var(--color-bg-hover);
+  color: var(--color-text);
+  border-color: var(--color-border-strong);
+}
+
+/* Results Section */
+.scout-results-section {
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.scout-results-header {
+  margin-bottom: var(--spacing-xl);
+}
+
+.scout-results-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-xs);
+}
+
+.scout-results-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--color-text);
+  margin: 0;
+}
+
+.scout-results-actions {
+  display: flex;
+  gap: var(--spacing-sm);
+}
+
+.scout-results-query {
+  font-size: 0.9375rem;
+  color: var(--color-text-secondary);
+  margin: 0;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .scout-container {
+    padding: var(--spacing-lg);
+  }
+
+  .scout-title {
+    font-size: 2rem;
+  }
+
+  .scout-search-box {
+    flex-direction: column;
+  }
+
+  .scout-results-title-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--spacing-md);
+  }
+
+  .scout-examples {
+    flex-direction: column;
+    align-items: center;
+  }
+}

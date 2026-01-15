@@ -1,0 +1,191 @@
+/* CompanyPipeline.css - Visual pipeline stages */
+
+.company-pipeline {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-md);
+  padding: var(--spacing-lg) var(--spacing-xl);
+  background: var(--color-bg-secondary);
+  border-radius: var(--radius-lg);
+  margin-bottom: var(--spacing-xl);
+}
+
+/* Pipeline stage */
+.pipeline-stage {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--radius-md);
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.pipeline-stage.disabled {
+  opacity: 0.4;
+}
+
+.pipeline-stage.pending {
+  opacity: 0.7;
+}
+
+.pipeline-stage.active {
+  background: rgba(var(--color-primary-rgb), 0.1);
+}
+
+.pipeline-stage.complete {
+  background: rgba(var(--color-success-rgb), 0.1);
+}
+
+/* Stage icon */
+.stage-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--color-bg);
+  color: var(--color-text-secondary);
+  transition: all 0.2s ease;
+}
+
+.pipeline-stage.active .stage-icon {
+  background: var(--color-primary);
+  color: white;
+}
+
+.pipeline-stage.complete .stage-icon {
+  background: var(--color-success);
+  color: white;
+}
+
+/* Stage content */
+.stage-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.stage-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.pipeline-stage.disabled .stage-label {
+  color: var(--color-text-muted);
+}
+
+.stage-count {
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+}
+
+.pipeline-stage.active .stage-count {
+  color: var(--color-primary);
+}
+
+.pipeline-stage.complete .stage-count {
+  color: var(--color-success);
+}
+
+/* Active pulse animation */
+.stage-pulse {
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius-md);
+  border: 2px solid var(--color-primary);
+  animation: stagePulse 1.5s ease infinite;
+  pointer-events: none;
+}
+
+@keyframes stagePulse {
+  0% {
+    opacity: 0.6;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.1);
+  }
+}
+
+/* Pipeline connector */
+.pipeline-connector {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  opacity: 0.3;
+  transition: opacity 0.2s ease;
+}
+
+.pipeline-connector.active {
+  opacity: 0.6;
+}
+
+.connector-line {
+  width: 30px;
+  height: 2px;
+  background: var(--color-border-strong);
+}
+
+.connector-arrow {
+  font-size: 1rem;
+  color: var(--color-text-muted);
+}
+
+/* Complete indicator */
+.pipeline-complete {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: var(--color-success);
+  border-radius: 50%;
+  color: white;
+  margin-left: var(--spacing-sm);
+  animation: completePopIn 0.3s ease;
+}
+
+@keyframes completePopIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .company-pipeline {
+    flex-wrap: wrap;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-md);
+  }
+
+  .pipeline-stage {
+    flex: 1;
+    min-width: 100px;
+  }
+
+  .pipeline-connector {
+    display: none;
+  }
+
+  .pipeline-complete {
+    width: 100%;
+    margin-left: 0;
+    margin-top: var(--spacing-sm);
+    border-radius: var(--radius-md);
+    padding: var(--spacing-sm);
+  }
+}

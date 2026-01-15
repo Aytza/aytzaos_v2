@@ -955,3 +955,19 @@ export async function deleteBugItem(id: string): Promise<ApiResponse<void>> {
     method: 'DELETE',
   });
 }
+
+// ============================================
+// COMPANY SCOUT
+// ============================================
+
+export interface ScoutStartResult {
+  task: Task;
+  plan: WorkflowPlan;
+}
+
+export async function startCompanyScout(query: string): Promise<ApiResponse<ScoutStartResult>> {
+  return request<ScoutStartResult>('/scout/start', {
+    method: 'POST',
+    body: JSON.stringify({ query }),
+  });
+}

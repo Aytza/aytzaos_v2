@@ -20,6 +20,7 @@ import {
 } from './handlers/oauth';
 import { routeProjectRequest } from './handlers/projects';
 import { handleGeneratePlan, handleResolveCheckpoint, handleCancelWorkflow } from './handlers/workflows';
+import { handleStartCompanyScout } from './handlers/companyScout';
 import type { BoardDO } from './BoardDO';
 import type { UserDO } from './UserDO';
 import type { RoadmapDO } from './RoadmapDO';
@@ -568,6 +569,18 @@ export default {
             }, 500);
           }
         }
+      }
+
+      // ============================================
+      // COMPANY SCOUT ROUTES
+      // ============================================
+
+      // POST /api/scout/start - Start a Company Scout workflow
+      if (url.pathname === '/api/scout/start' && request.method === 'POST') {
+        const userTasksId = `user-tasks-${user.id}`;
+        const boardDoId = env.BOARD_DO.idFromName(userTasksId);
+        const boardStub = env.BOARD_DO.get(boardDoId) as BoardDOStub;
+        return handleStartCompanyScout(request, env, boardStub, user.id);
       }
 
       // ============================================
