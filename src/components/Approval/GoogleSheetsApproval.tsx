@@ -58,6 +58,7 @@ export function GoogleSheetsApproval({
   const [isDragging, setIsDragging] = useState(false);
   const [showCommentInput, setShowCommentInput] = useState(false);
   const [commentText, setCommentText] = useState('');
+  const [wrapText, setWrapText] = useState(false);
   const dragStartRef = useRef<{ index: number; side: 'left' | 'right' } | null>(null);
 
   // Editable title (for create spreadsheet) - using shared hook
@@ -334,7 +335,11 @@ export function GoogleSheetsApproval({
           <span className="sheets-row-number">{rowIndex + 1}</span>
           <div className="sheets-row-cells">
             {normalizedRow.map((cell, cellIndex) => (
-              <span key={cellIndex} className="sheets-cell">
+              <span
+                key={cellIndex}
+                className={`sheets-cell ${wrapText ? 'sheets-cell-wrap' : ''}`}
+                title={cell || undefined}
+              >
                 {cell || '\u00A0'}
               </span>
             ))}
@@ -561,6 +566,13 @@ export function GoogleSheetsApproval({
           {removedRows > 0 && (
             <span className="stat-deletions">-{removedRows} rows</span>
           )}
+          <button
+            className={`sheets-wrap-toggle ${wrapText ? 'active' : ''}`}
+            onClick={() => setWrapText(!wrapText)}
+            title={wrapText ? 'Truncate text' : 'Wrap text'}
+          >
+            {wrapText ? 'Truncate' : 'Wrap text'}
+          </button>
         </div>
       </div>
 

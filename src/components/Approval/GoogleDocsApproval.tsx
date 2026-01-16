@@ -8,6 +8,7 @@
  */
 
 import { useState, useCallback, useRef } from 'react';
+import Markdown from 'react-markdown';
 import { McpIcon } from '../common';
 import { ApprovalFooter } from './ApprovalFooter';
 import { useTitleEdit } from '../../hooks';
@@ -266,7 +267,9 @@ export function GoogleDocsApproval({
                   onMouseDown={(e) => handleParagraphMouseDown(idx, side, e)}
                   onMouseEnter={() => handleParagraphMouseEnter(idx, side)}
                 >
-                  <span className="docs-paragraph-content">{para}</span>
+                  <div className="docs-paragraph-content">
+                    <Markdown>{para}</Markdown>
+                  </div>
                   {side === 'right' && (
                     <span className={`docs-comment-indicator ${paragraphHasComment ? 'has-comment' : ''} ${!isLoading ? 'can-comment' : ''}`}>
                       {status === 'added' ? '+' : '+'}

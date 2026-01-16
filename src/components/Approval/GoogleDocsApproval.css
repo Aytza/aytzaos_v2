@@ -339,8 +339,108 @@
   font-family: var(--font-sans);
   font-size: 14px;
   color: var(--color-text-primary);
-  white-space: pre-wrap;
   word-wrap: break-word;
+}
+
+/* Markdown rendered content */
+.docs-paragraph-content h1 {
+  font-size: 24px;
+  font-weight: 700;
+  margin: 0 0 var(--space-2) 0;
+  color: var(--color-text-primary);
+  line-height: 1.3;
+}
+
+.docs-paragraph-content h2 {
+  font-size: 20px;
+  font-weight: 600;
+  margin: 0 0 var(--space-2) 0;
+  color: var(--color-text-primary);
+  line-height: 1.3;
+}
+
+.docs-paragraph-content h3 {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0 0 var(--space-1) 0;
+  color: var(--color-text-primary);
+  line-height: 1.4;
+}
+
+.docs-paragraph-content h4,
+.docs-paragraph-content h5,
+.docs-paragraph-content h6 {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0 0 var(--space-1) 0;
+  color: var(--color-text-primary);
+}
+
+.docs-paragraph-content p {
+  margin: 0;
+  line-height: 1.6;
+}
+
+.docs-paragraph-content strong {
+  font-weight: 600;
+}
+
+.docs-paragraph-content em {
+  font-style: italic;
+}
+
+.docs-paragraph-content ul,
+.docs-paragraph-content ol {
+  margin: var(--space-1) 0;
+  padding-left: var(--space-4);
+}
+
+.docs-paragraph-content li {
+  margin: var(--space-1) 0;
+  line-height: 1.5;
+}
+
+.docs-paragraph-content code {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  padding: 2px 6px;
+  background: var(--color-bg-tertiary);
+  border-radius: var(--radius-sm);
+}
+
+.docs-paragraph-content pre {
+  margin: var(--space-2) 0;
+  padding: var(--space-3);
+  background: var(--color-bg-tertiary);
+  border-radius: var(--radius-sm);
+  overflow-x: auto;
+}
+
+.docs-paragraph-content pre code {
+  padding: 0;
+  background: none;
+}
+
+.docs-paragraph-content blockquote {
+  margin: var(--space-2) 0;
+  padding-left: var(--space-3);
+  border-left: 3px solid var(--color-border-default);
+  color: var(--color-text-secondary);
+}
+
+.docs-paragraph-content a {
+  color: var(--color-accent-primary);
+  text-decoration: none;
+}
+
+.docs-paragraph-content a:hover {
+  text-decoration: underline;
+}
+
+.docs-paragraph-content hr {
+  margin: var(--space-3) 0;
+  border: none;
+  border-top: 1px solid var(--color-border-default);
 }
 
 /* Comment indicator column */

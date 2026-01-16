@@ -53,12 +53,28 @@ export interface MCPEnvBindings {
   [key: string]: unknown;
 }
 
+/** Progress event emitted by MCP tools during execution */
+export interface MCPProgress {
+  /** Tool emitting the progress */
+  toolName: string;
+  /** Current stage of execution */
+  stage: string;
+  /** Human-readable progress message */
+  message: string;
+  /** Numeric progress for progress bars */
+  progress?: { current: number; total: number };
+  /** Additional stage-specific data */
+  data?: Record<string, unknown>;
+}
+
 /** Credentials passed to factories and refresh functions */
 export interface MCPCredentials {
   accessToken?: string;
   refreshToken?: string;
   expiresAt?: string;
   apiKey?: string;
+  /** Optional progress callback for MCP tools that support streaming progress */
+  onProgress?: (progress: MCPProgress) => void;
   [key: string]: unknown;
 }
 
@@ -566,7 +582,8 @@ export const ACCOUNT_REGISTRY: AccountDefinition[] = [
         description: 'Find and research companies matching specific criteria',
         factory: (creds, env) => new ScoutMCPServer(
           env?.EXA_API_KEY as string || '',
-          creds.anthropicApiKey as string || ''
+          creds.anthropicApiKey as string || '',
+          creds.onProgress
         ),
         workflowGuidance: SCOUT_GUIDANCE,
       },

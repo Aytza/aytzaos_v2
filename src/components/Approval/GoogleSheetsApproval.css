@@ -249,6 +249,31 @@
   color: #ef4444;
 }
 
+/* Wrap text toggle button */
+.sheets-wrap-toggle {
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  margin-left: var(--space-2);
+}
+
+.sheets-wrap-toggle:hover {
+  color: var(--color-text-primary);
+  border-color: var(--color-text-muted);
+}
+
+.sheets-wrap-toggle.active {
+  color: var(--color-accent-primary);
+  border-color: var(--color-accent-primary);
+  background: rgba(59, 130, 246, 0.08);
+}
+
 /* Content - side by side */
 .sheets-approval-content {
   flex: 1;
@@ -385,6 +410,13 @@
 
 .sheets-cell:last-child {
   border-right: none;
+}
+
+/* Wrapped text mode */
+.sheets-cell-wrap {
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-width: 300px;
 }
 
 /* Comment indicator */

@@ -628,7 +628,8 @@ export class AgentWorkflow extends WorkflowEntrypoint<WorkflowEnv, AgentWorkflow
                     toolUse.name,
                     toolUse.input as Record<string, unknown>,
                     mcpConfig.credentials,
-                    mcpConfig.servers
+                    mcpConfig.servers,
+                    addLog
                   );
                   const mcpResult = result as { isError?: boolean; content?: Array<{ type: string; text?: string }> };
                   if (mcpResult.isError) {
@@ -1006,7 +1007,8 @@ ${workflowGuidance}`;
     toolName: string,
     args: Record<string, unknown>,
     credentials: CredentialStore,
-    servers: MCPServerInfo[]
+    servers: MCPServerInfo[],
+    addLog?: (level: string, message: string, stepId?: string, metadata?: object) => Promise<void>
   ): Promise<unknown> {
     const parts = toolName.split('__');
     if (parts.length !== 2) {
@@ -1018,7 +1020,7 @@ ${workflowGuidance}`;
     const lookup = getMCPByServerName(serverName);
 
     if (lookup) {
-      return this.executeHostedMcpTool(lookup, method, args, credentials);
+      return this.executeHostedMcpTool(lookup, method, args, credentials, addLog);
     }
 
     const remoteServer = servers.find(s => {
@@ -1041,7 +1043,8 @@ ${workflowGuidance}`;
     lookup: { account: AccountDefinition; mcp: { factory: (creds: MCPCredentials, env: MCPEnvBindings) => { callTool: (name: string, args: Record<string, unknown>) => Promise<unknown> } } },
     method: string,
     args: Record<string, unknown>,
-    credentials: CredentialStore
+    credentials: CredentialStore,
+    addLog?: (level: string, message: string, stepId?: string, metadata?: object) => Promise<void>
   ): Promise<unknown> {
     const { account, mcp } = lookup;
 
@@ -1058,6 +1061,19 @@ ${workflowGuidance}`;
           mcpCredentials[key] = credentials[key];
         }
       }
+    }
+
+    // Wire progress callback to addLog for tools that support it
+    if (addLog) {
+      mcpCredentials.onProgress = (progress) => {
+        addLog('info', progress.message, undefined, {
+          type: 'tool_progress',
+          tool: progress.toolName,
+          stage: progress.stage,
+          progress: progress.progress,
+          data: progress.data,
+        }).catch(() => {}); // Fire-and-forget
+      };
     }
 
     const envBindings: MCPEnvBindings = {};
