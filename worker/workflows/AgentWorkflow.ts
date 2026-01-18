@@ -377,18 +377,20 @@ export class AgentWorkflow extends WorkflowEntrypoint<WorkflowEnv, AgentWorkflow
       let turnIndex = 0;
       let done = false;
 
+      // Initialize workflow on first turn - do this OUTSIDE step.do() to avoid logging on retries
+      await step.do('init-workflow', async () => {
+        await updatePlan({
+          status: 'executing',
+          steps: [],
+        });
+        await addLog('info', 'Agent started working on task');
+        return 'initialized';
+      });
+
       while (!done && turnIndex < 50) {
         const currentTurnIndex = turnIndex;
 
         const turnResultJson = await step.do(`turn-${currentTurnIndex}`, async () => {
-          if (currentTurnIndex === 0) {
-            await updatePlan({
-              status: 'executing',
-              steps: [],
-            });
-            await addLog('info', 'Agent started working on task');
-          }
-
           const client = new Anthropic({ apiKey: mcpConfig.credentials.anthropicApiKey });
 
           const stream = client.messages.stream({
@@ -779,12 +781,18 @@ export class AgentWorkflow extends WorkflowEntrypoint<WorkflowEnv, AgentWorkflow
       const message = error instanceof Error ? error.message : String(error);
       logger.workflow.error('Workflow error', { error: message });
 
+      // Check for rate limit errors and provide better messaging
+      const isRateLimit = message.includes('rate_limit') || message.includes('429') || message.includes('Rate limit');
+      const userFriendlyMessage = isRateLimit
+        ? 'API rate limit exceeded. Please try again in a few minutes.'
+        : message;
+
       await step.do('handle-error', async () => {
         await updatePlan({
           status: 'failed',
-          result: { success: false, error: message },
+          result: { success: false, error: userFriendlyMessage },
         });
-        await addLog('error', `Workflow failed: ${message}`);
+        await addLog('error', `Workflow failed: ${userFriendlyMessage}`);
         return 'error';
       });
 
