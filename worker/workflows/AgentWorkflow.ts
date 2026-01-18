@@ -12,7 +12,7 @@
  */
 
 import { WorkflowEntrypoint } from 'cloudflare:workers';
-import type { WorkflowEvent, WorkflowStep } from 'cloudflare:workers';
+import type { WorkflowEvent, WorkflowStep, WorkflowStepConfig } from 'cloudflare:workers';
 import Anthropic from '@anthropic-ai/sdk';
 import type { MessageParam, ContentBlock, ToolUseBlock, TextBlock, Tool } from '@anthropic-ai/sdk/resources/messages';
 import {
@@ -390,24 +390,46 @@ export class AgentWorkflow extends WorkflowEntrypoint<WorkflowEnv, AgentWorkflow
       while (!done && turnIndex < 50) {
         const currentTurnIndex = turnIndex;
 
-        const turnResultJson = await step.do(`turn-${currentTurnIndex}`, async () => {
+        // Log that we're starting this turn (outside step.do to avoid retry logs)
+        if (currentTurnIndex === 0) {
+          addLog('info', 'Agent is analyzing your request...').catch(() => {});
+        } else {
+          addLog('info', 'Agent is processing...').catch(() => {});
+        }
+
+        // Limit retries for API calls to prevent retry storms on rate limits
+        const turnConfig: WorkflowStepConfig = {
+          retries: { limit: 2, backoff: 'exponential', delay: '5 seconds' },
+        };
+
+        const turnResultJson = await step.do(`turn-${currentTurnIndex}`, turnConfig, async () => {
           const client = new Anthropic({ apiKey: mcpConfig.credentials.anthropicApiKey });
 
-          const stream = client.messages.stream({
-            model: modelToUse,
-            max_tokens: 8192,
-            system: systemPrompt,
-            messages,
-            tools: claudeTools,
-          });
+          let finalMessage;
+          try {
+            const stream = client.messages.stream({
+              model: modelToUse,
+              max_tokens: 8192,
+              system: systemPrompt,
+              messages,
+              tools: claudeTools,
+            });
 
-          stream.on('text', async (text) => {
-            broadcastStreamChunk(currentTurnIndex, text).catch((e) =>
-              logger.workflow.error('Stream broadcast failed', { error: e instanceof Error ? e.message : String(e) })
-            );
-          });
+            stream.on('text', async (text) => {
+              broadcastStreamChunk(currentTurnIndex, text).catch((e) =>
+                logger.workflow.error('Stream broadcast failed', { error: e instanceof Error ? e.message : String(e) })
+              );
+            });
 
-          const finalMessage = await stream.finalMessage();
+            finalMessage = await stream.finalMessage();
+          } catch (apiError) {
+            // Check for rate limit errors and provide clear message
+            const errorMessage = apiError instanceof Error ? apiError.message : String(apiError);
+            if (errorMessage.includes('rate_limit') || errorMessage.includes('429') || errorMessage.includes('Rate limit')) {
+              throw new Error('API rate limit exceeded. Please try again in a few minutes.');
+            }
+            throw apiError;
+          }
 
           const textContent = finalMessage.content
             .filter((block): block is TextBlock => block.type === 'text')
@@ -483,6 +505,10 @@ export class AgentWorkflow extends WorkflowEntrypoint<WorkflowEnv, AgentWorkflow
                 action: string;
                 data: Record<string, unknown>;
               };
+
+              // Log what tool is being prepared
+              const toolDisplayName = formatToolName(approvalArgs.tool);
+              addLog('info', `Preparing: ${toolDisplayName}`, toolStepId).catch(() => {});
 
               // Validate required fields from tool metadata
               // Tool name format: "ServerName__methodName"
