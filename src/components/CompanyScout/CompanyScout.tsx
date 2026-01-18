@@ -2,23 +2,19 @@
  * CompanyScout - Standalone company research tool
  *
  * A specialized AI-powered tool for finding and evaluating companies.
- * Features:
- * - Smart clarifying questions to understand search criteria
- * - Real-time streaming of discovered companies
- * - Visual pipeline showing extraction → verification → scoring
- * - Fixed output format: Company name, Website, Reasoning, Fit score
+ * Shows real-time agent activity and streams company results.
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Button, Input } from '../common';
 import { CompanyResultsGrid } from './CompanyResultsGrid';
-import { CompanyPipeline } from './CompanyPipeline';
 import { ScoutQuestionsPanel } from './ScoutQuestionsPanel';
+import { WorkflowProgress } from '../Workflow';
 import { getApprovalView } from '../Approval';
 import { useTaskWorkflow } from '../../hooks/useTaskWorkflow';
 import { useToast } from '../../context/ToastContext';
-import type { Task, WorkflowPlan } from '../../types';
+import type { Task, WorkflowPlan, WorkflowArtifact } from '../../types';
 import type { Company, ScoutPhase, PipelineStats, ScoutQuestion } from './types';
 import * as api from '../../api/client';
 import './CompanyScout.css';
@@ -37,6 +33,9 @@ export function CompanyScout() {
   // Company results state (parsed from workflow)
   const [companies, setCompanies] = useState<Company[]>([]);
   const [currentPhase, setCurrentPhase] = useState<ScoutPhase>('idle');
+
+  // View state for checkpoint
+  const [showCheckpointReview, setShowCheckpointReview] = useState(false);
 
   const inputRef = useRef<HTMLInputElement>(null);
   const companiesRef = useRef<Company[]>([]);
@@ -247,6 +246,7 @@ export function CompanyScout() {
     setCompanies([]);
     companiesRef.current = [];
     setCurrentPhase('idle');
+    setShowCheckpointReview(false);
     inputRef.current?.focus();
   }, [workflow]);
 
@@ -257,6 +257,7 @@ export function CompanyScout() {
     setCompanies([]);
     companiesRef.current = [];
     setCurrentPhase('idle');
+    setShowCheckpointReview(false);
   }, []);
 
   // Parse questions from checkpoint data
@@ -301,11 +302,27 @@ export function CompanyScout() {
 
   const isRunning = workflow.workflowPlan?.status === 'executing';
   const isComplete = workflow.workflowPlan?.status === 'completed';
-  const isFailed = workflow.workflowPlan?.status === 'failed';
+  const hasWorkflow = !!workflow.workflowPlan;
 
-  // Render the checkpoint approval view for non-question checkpoints
-  const renderCheckpointApproval = () => {
-    if (!isAtOtherCheckpoint || !workflow.workflowPlan) return null;
+  // Checkpoint approval handlers
+  const handleApproveCheckpoint = async (responseData?: Record<string, unknown>) => {
+    await workflow.resolveCheckpoint('approve', { data: responseData });
+    setShowCheckpointReview(false);
+  };
+
+  const handleRequestChanges = async (feedback: string) => {
+    await workflow.resolveCheckpoint('request_changes', { feedback });
+    setShowCheckpointReview(false);
+  };
+
+  const handleCancelCheckpoint = async () => {
+    await workflow.resolveCheckpoint('cancel');
+    setShowCheckpointReview(false);
+  };
+
+  // Render checkpoint review (for non-question checkpoints)
+  const renderCheckpointReview = () => {
+    if (!showCheckpointReview || !workflow.workflowPlan) return null;
 
     const checkpointData = workflow.workflowPlan.checkpointData as {
       tool?: string;
@@ -330,25 +347,39 @@ export function CompanyScout() {
     }
 
     return (
-      <div className="scout-checkpoint-approval">
+      <div className="scout-checkpoint-review">
+        <div className="checkpoint-review-header">
+          <button
+            className="back-button"
+            onClick={() => setShowCheckpointReview(false)}
+          >
+            ← Back
+          </button>
+          <h3>Approval Required</h3>
+        </div>
         <ApprovalView
           tool={toolName}
           action={checkpointData?.action || ''}
           data={dataObj}
-          onApprove={async (responseData) => {
-            await workflow.resolveCheckpoint('approve', { data: responseData });
-          }}
-          onRequestChanges={async (feedback) => {
-            await workflow.resolveCheckpoint('request_changes', { feedback });
-          }}
-          onCancel={async () => {
-            await workflow.resolveCheckpoint('cancel');
-          }}
+          onApprove={handleApproveCheckpoint}
+          onRequestChanges={handleRequestChanges}
+          onCancel={handleCancelCheckpoint}
           isLoading={workflow.isRespondingToCheckpoint}
         />
       </div>
     );
   };
+
+  // If showing checkpoint review, render that
+  if (showCheckpointReview && isAtOtherCheckpoint) {
+    return (
+      <div className="company-scout">
+        <div className="scout-container">
+          {renderCheckpointReview()}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="company-scout">
@@ -445,13 +476,10 @@ export function CompanyScout() {
           <div className="scout-active-section">
             {/* Query display */}
             <div className="scout-query-header">
-              <p className="scout-query-text">"{searchQuery}"</p>
-              {workflow.error && (
-                <div className="scout-error">{workflow.error}</div>
-              )}
+              <p className="scout-query-text">Searching: "{searchQuery}"</p>
             </div>
 
-            {/* Questions checkpoint */}
+            {/* Questions checkpoint - show inline */}
             {isAtQuestionsCheckpoint && (
               <ScoutQuestionsPanel
                 questions={getQuestionsFromCheckpoint()}
@@ -462,57 +490,48 @@ export function CompanyScout() {
               />
             )}
 
-            {/* Other checkpoint (like Google Sheets approval) */}
-            {renderCheckpointApproval()}
-
-            {/* Running or completed - show pipeline and results */}
-            {(isRunning || isComplete || isFailed) && !isAtQuestionsCheckpoint && !isAtOtherCheckpoint && (
-              <>
-                {/* Pipeline visualization */}
-                <CompanyPipeline
-                  phase={currentPhase}
-                  stats={pipelineStats}
+            {/* Show workflow progress for running/completed states */}
+            {hasWorkflow && !isAtQuestionsCheckpoint && (
+              <div className="scout-workflow-section">
+                {/* Workflow Progress - shows agent activity */}
+                <WorkflowProgress
+                  plan={workflow.workflowPlan!}
+                  onCancel={workflow.cancelWorkflow}
+                  onDismiss={handleNewScout}
+                  onReviewCheckpoint={() => setShowCheckpointReview(true)}
+                  onViewEmail={(artifact: WorkflowArtifact) => {
+                    // Handle email view if needed
+                    console.log('View email:', artifact);
+                  }}
+                  customLogs={{
+                    logs: workflow.workflowLogs,
+                    fetchLogs: workflow.loadWorkflowPlan,
+                  }}
                 />
 
-                {/* Status message */}
-                <div className="scout-status">
-                  {isRunning && (
-                    <div className="scout-status-running">
-                      <span className="status-dot running" />
-                      <span>Searching for companies...</span>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => workflow.cancelWorkflow()}
-                      >
-                        Cancel
-                      </Button>
+                {/* Company results section - only show if we have companies or completed */}
+                {(companies.length > 0 || isComplete) && (
+                  <div className="scout-results-section">
+                    <div className="scout-results-header">
+                      <h2>
+                        {isComplete
+                          ? `Found ${pipelineStats.included} Companies`
+                          : `${companies.length} Companies Found`}
+                      </h2>
+                      {isComplete && pipelineStats.excluded > 0 && (
+                        <span className="excluded-count">
+                          ({pipelineStats.excluded} excluded with score &lt; 5)
+                        </span>
+                      )}
                     </div>
-                  )}
-                  {isComplete && companies.length > 0 && (
-                    <div className="scout-status-complete">
-                      <span className="status-dot complete" />
-                      <span>
-                        Found {pipelineStats.included} matching companies
-                        {pipelineStats.excluded > 0 && ` (${pipelineStats.excluded} excluded)`}
-                      </span>
-                    </div>
-                  )}
-                  {isFailed && (
-                    <div className="scout-status-failed">
-                      <span className="status-dot failed" />
-                      <span>Scout failed. Please try again.</span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Company results grid */}
-                <CompanyResultsGrid
-                  companies={companies}
-                  isLoading={isRunning}
-                  phase={currentPhase}
-                />
-              </>
+                    <CompanyResultsGrid
+                      companies={companies}
+                      isLoading={isRunning}
+                      phase={currentPhase}
+                    />
+                  </div>
+                )}
+              </div>
             )}
 
             {/* Loading state when workflow is starting */}
@@ -520,6 +539,16 @@ export function CompanyScout() {
               <div className="scout-loading">
                 <div className="loading-spinner" />
                 <p>Starting scout...</p>
+              </div>
+            )}
+
+            {/* Error state */}
+            {workflow.error && (
+              <div className="scout-error">
+                <p>{workflow.error}</p>
+                <Button variant="ghost" onClick={handleNewScout}>
+                  Try Again
+                </Button>
               </div>
             )}
           </div>
