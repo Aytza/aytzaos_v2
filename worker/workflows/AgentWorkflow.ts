@@ -478,7 +478,10 @@ export class AgentWorkflow extends WorkflowEntrypoint<WorkflowEnv, AgentWorkflow
           logger.workflow.error('Plan update failed', { error: e instanceof Error ? e.message : String(e) })
         );
         if (textContent) {
-          addLog('info', textContent.substring(0, 200), agentStep.id).catch(() => {});
+          // Don't truncate if it contains [COMPANY_DATA] - the UI needs full content to parse companies
+          const hasCompanyData = textContent.includes('[COMPANY_DATA]');
+          const logContent = hasCompanyData ? textContent : textContent.substring(0, 200);
+          addLog('info', logContent, agentStep.id).catch(() => {});
         }
 
         messages.push({ role: 'assistant', content: response.content });
