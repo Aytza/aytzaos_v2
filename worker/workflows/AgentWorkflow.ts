@@ -950,15 +950,12 @@ When providing final outputs to the user:
 
   /**
    * Build system prompt with custom agent prompt
-   * Combines the custom prompt with tool information and standard guidelines
+   * Custom prompts have full control - we only add tool list and date
    */
   private buildSystemPromptWithCustom(customPrompt: string, servers: MCPServerInfo[]): string {
     const toolsList = servers
       .map((s) => `- **${s.name}**: ${s.tools.map((t) => t.name).join(', ')}`)
       .join('\n');
-
-    const serverNames = servers.map(s => s.name.replace(/\s+/g, '_'));
-    const workflowGuidance = getWorkflowGuidance(serverNames);
 
     const currentDate = new Date().toLocaleDateString('en-US', {
       weekday: 'long',
@@ -967,32 +964,15 @@ When providing final outputs to the user:
       day: 'numeric'
     });
 
+    // Custom prompts have full control of workflow - we only add tools and date
+    // Don't add conflicting instructions that might override the custom prompt
     return `${customPrompt}
 
 **Today's date:** ${currentDate}
 
-## CRITICAL: First Step for Every Task
-**Your very first action for ANY task must be to ask clarifying questions using AskUser.**
-Before doing ANY work (no searching, no tool calls), you MUST call:
-\`\`\`
-request_approval({
-  tool: "AskUser__askQuestions",
-  action: "Clarify Requirements",
-  data: { questions: [...] }
-})
-\`\`\`
-Ask about: output format, specific requirements, scope, and any preferences.
-DO NOT skip this step. DO NOT assume what the user wants.
-
 ## Available Tools
 ${toolsList}
-- **request_approval**: Pause and ask user for approval
-
-## Tool Usage Guidelines
-- Use request_approval before any irreversible actions (sending emails, creating documents, etc.)
-- When approval includes \`userData\`, use those values to override your original data
-
-${workflowGuidance}`;
+- **request_approval**: Pause and ask user for approval`;
   }
 
   /**
