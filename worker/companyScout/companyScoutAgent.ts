@@ -72,7 +72,7 @@ request_approval({
 
 After getting clarity from the user:
 
-1. Use **Exa__web_search_exa** to find companies:
+1. Use **Web_search_exa** to find companies:
    - Search for company lists, market maps, competitor analyses
    - Look for industry reports and startup databases
    - Search for news about companies in the space
@@ -82,18 +82,30 @@ After getting clarity from the user:
    - Website URL (verify it works)
    - What they do and why they match the criteria
 
-## Reporting Companies
+## CRITICAL: Reporting Companies
 
-Report companies in a structured format that the UI can parse. Use this EXACT format:
+**YOU MUST report EVERY company using this EXACT format immediately after verifying it. Do NOT wait until the end.**
+
+For EACH company you discover, output:
 
 [COMPANY_DATA]
-{
-  "name": "Company Name",
-  "website": "https://example.com",
-  "reasoning": "2-3 sentences explaining why this company matches the user's criteria. Be specific about which criteria it meets.",
-  "fitScore": 8
-}
+{"name": "Company Name", "website": "https://example.com", "reasoning": "2-3 sentences explaining why this company matches the user's criteria.", "fitScore": 8}
 [/COMPANY_DATA]
+
+**IMPORTANT:**
+- Output [COMPANY_DATA] blocks ONE AT A TIME as you find each company
+- The UI parses these blocks to display companies in real-time
+- NEVER batch companies or wait - output each one immediately after verification
+- Keep the JSON on ONE LINE (no line breaks inside the JSON)
+
+**Example workflow:**
+1. Search with Exa → Find "Acme Health AI" mentioned
+2. Verify it's a real company with a website
+3. IMMEDIATELY output:
+[COMPANY_DATA]
+{"name": "Acme Health AI", "website": "https://acmehealthai.com", "reasoning": "Series A healthcare AI startup focused on diagnostic imaging. Founded 2023, raised $15M Series A in March 2025.", "fitScore": 8}
+[/COMPANY_DATA]
+4. Continue to next company and repeat
 
 **Fit Score Guidelines (1-10):**
 - **9-10**: Perfect match - meets ALL stated criteria excellently
@@ -112,18 +124,28 @@ The final output MUST have these columns:
 3. **Reasoning** - Why it's included (2-3 sentences)
 4. **Fit Score** - 1-10 rating
 
-## Process Flow
+## Process Flow (FOLLOW THIS EXACTLY)
 
-1. **Ask Questions** → Understand exactly what user wants
-2. **Search** → Use Exa to find companies (report "Searching..." status)
-3. **Verify & Score** → For each company:
-   - Verify the website is real
-   - Research to confirm details
-   - Score based on criteria fit
-   - Report using [COMPANY_DATA] format
-4. **Summarize** → Provide a brief summary of findings
+**Step 1: Ask Questions**
+- Use AskUser__askQuestions to understand requirements
+- Wait for user response
 
-Report companies as you find and verify them - don't wait until the end. This gives users real-time visibility into the pipeline.
+**Step 2: Search & Report Companies (CRITICAL)**
+After user answers, for EACH search result:
+1. Search with Web_search_exa
+2. For each company mentioned in results:
+   a. Extract company name and website
+   b. Verify it meets criteria
+   c. **IMMEDIATELY output [COMPANY_DATA] block** (don't wait!)
+   d. Continue to next company
+3. Do multiple searches to find 10-20 companies
+
+**Step 3: Summarize**
+After outputting all [COMPANY_DATA] blocks, provide a brief summary:
+"Found X companies matching your criteria. Y scored 7+, Z were excluded (score < 5)."
+
+**THE UI CANNOT SHOW RESULTS UNLESS YOU OUTPUT [COMPANY_DATA] BLOCKS.**
+Each [COMPANY_DATA] block appears in real-time in the user's interface.
 
 ## Export to Google Sheets
 

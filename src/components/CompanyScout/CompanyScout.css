@@ -1,14 +1,17 @@
-/* CompanyScout.css - Main styles for Company Scout page */
+/**
+ * CompanyScout Styles
+ * Uses the app's design system variables for consistent styling
+ */
 
 .company-scout {
-  min-height: calc(100vh - var(--header-height, 60px));
-  background: var(--color-bg);
+  min-height: calc(100vh - var(--header-height));
+  background: var(--color-bg-primary);
 }
 
 .scout-container {
-  max-width: 1000px;
+  max-width: 900px;
   margin: 0 auto;
-  padding: var(--spacing-lg) var(--spacing-xl);
+  padding: var(--space-5) var(--space-6);
 }
 
 /* Header */
@@ -16,15 +19,16 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: var(--spacing-lg);
-  padding-bottom: var(--spacing-md);
-  border-bottom: 1px solid var(--color-border);
+  margin-bottom: var(--space-5);
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--color-border-default);
 }
 
 .scout-title {
-  font-size: 1.25rem;
+  font-family: var(--font-heading);
+  font-size: 20px;
   font-weight: 600;
-  color: var(--color-text);
+  color: var(--color-text-primary);
   margin: 0;
 }
 
@@ -33,7 +37,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: var(--spacing-xl) 0;
+  padding: var(--space-6) 0;
 }
 
 .scout-input-container {
@@ -43,14 +47,14 @@
 }
 
 .scout-subtitle {
-  font-size: 0.9375rem;
+  font-size: 14px;
   color: var(--color-text-secondary);
-  margin: 0 0 var(--spacing-lg) 0;
+  margin: 0 0 var(--space-5) 0;
 }
 
 .scout-search-box {
   display: flex;
-  gap: var(--spacing-sm);
+  gap: var(--space-2);
 }
 
 .scout-search-box input {
@@ -62,48 +66,48 @@
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: var(--spacing-xs);
-  margin-top: var(--spacing-md);
+  gap: var(--space-2);
+  margin-top: var(--space-4);
 }
 
 .scout-examples-label {
   color: var(--color-text-muted);
-  font-size: 0.8125rem;
+  font-size: 12px;
   width: 100%;
-  margin-bottom: var(--spacing-xs);
+  margin-bottom: var(--space-1);
 }
 
 .scout-example {
   background: var(--color-bg-secondary);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-full);
-  padding: var(--spacing-xs) var(--spacing-sm);
-  font-size: 0.75rem;
+  border: 1px solid var(--color-border-default);
+  border-radius: 20px;
+  padding: var(--space-1) var(--space-3);
+  font-size: 12px;
   color: var(--color-text-secondary);
   cursor: pointer;
   transition: all 0.15s ease;
 }
 
 .scout-example:hover {
-  background: var(--color-bg-hover);
-  color: var(--color-text);
-  border-color: var(--color-border-strong);
+  background: var(--color-bg-tertiary);
+  color: var(--color-text-primary);
+  border-color: var(--color-border-focus);
 }
 
 /* Scout History */
 .scout-history {
   width: 100%;
   max-width: 600px;
-  margin-top: var(--spacing-xl);
-  padding-top: var(--spacing-lg);
-  border-top: 1px solid var(--color-border);
+  margin-top: var(--space-6);
+  padding-top: var(--space-5);
+  border-top: 1px solid var(--color-border-default);
 }
 
 .scout-history-title {
-  font-size: 0.75rem;
+  font-size: 11px;
   font-weight: 600;
   color: var(--color-text-muted);
-  margin: 0 0 var(--spacing-sm) 0;
+  margin: 0 0 var(--space-3) 0;
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
@@ -118,10 +122,10 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: var(--spacing-sm) var(--spacing-md);
+  padding: var(--space-2) var(--space-3);
   background: transparent;
   border: none;
-  border-radius: var(--radius-sm);
+  border-radius: var(--border-radius);
   cursor: pointer;
   transition: all 0.15s ease;
   text-align: left;
@@ -133,37 +137,37 @@
 }
 
 .history-query {
-  font-size: 0.875rem;
-  color: var(--color-text);
+  font-size: 13px;
+  color: var(--color-text-primary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .history-date {
-  font-size: 0.75rem;
+  font-size: 12px;
   color: var(--color-text-muted);
   flex-shrink: 0;
-  margin-left: var(--spacing-md);
+  margin-left: var(--space-4);
 }
 
 /* Active Section */
 .scout-active-section {
-  animation: fadeIn 0.2s ease;
+  animation: scoutFadeIn 0.2s ease;
 }
 
-@keyframes fadeIn {
+@keyframes scoutFadeIn {
   from { opacity: 0; }
   to { opacity: 1; }
 }
 
 /* Query Header */
 .scout-query-header {
-  margin-bottom: var(--spacing-lg);
+  margin-bottom: var(--space-5);
 }
 
 .scout-query-text {
-  font-size: 0.9375rem;
+  font-size: 14px;
   color: var(--color-text-secondary);
   margin: 0;
 }
@@ -172,32 +176,32 @@
 .scout-workflow-section {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-xl);
+  gap: var(--space-6);
 }
 
 /* Results Section */
 .scout-results-section {
-  margin-top: var(--spacing-lg);
-  padding-top: var(--spacing-lg);
-  border-top: 1px solid var(--color-border);
+  margin-top: var(--space-5);
+  padding-top: var(--space-5);
+  border-top: 1px solid var(--color-border-default);
 }
 
 .scout-results-header {
   display: flex;
   align-items: baseline;
-  gap: var(--spacing-sm);
-  margin-bottom: var(--spacing-lg);
+  gap: var(--space-2);
+  margin-bottom: var(--space-5);
 }
 
 .scout-results-header h2 {
-  font-size: 1rem;
+  font-size: 16px;
   font-weight: 600;
-  color: var(--color-text);
+  color: var(--color-text-primary);
   margin: 0;
 }
 
 .excluded-count {
-  font-size: 0.8125rem;
+  font-size: 12px;
   color: var(--color-text-muted);
 }
 
@@ -207,26 +211,26 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: var(--spacing-2xl);
+  padding: var(--space-8);
   color: var(--color-text-muted);
 }
 
 .scout-loading .loading-spinner {
   width: 24px;
   height: 24px;
-  border: 2px solid var(--color-border);
-  border-top-color: var(--color-primary);
+  border: 2px solid var(--color-border-default);
+  border-top-color: var(--color-accent-primary);
   border-radius: 50%;
-  animation: spin 0.7s linear infinite;
-  margin-bottom: var(--spacing-sm);
+  animation: scoutSpin 0.7s linear infinite;
+  margin-bottom: var(--space-3);
 }
 
-@keyframes spin {
+@keyframes scoutSpin {
   to { transform: rotate(360deg); }
 }
 
 .scout-loading p {
-  font-size: 0.875rem;
+  font-size: 13px;
   margin: 0;
 }
 
@@ -235,67 +239,67 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: var(--spacing-md);
-  padding: var(--spacing-xl);
-  background: rgba(var(--color-danger-rgb), 0.05);
-  border: 1px solid rgba(var(--color-danger-rgb), 0.2);
-  border-radius: var(--radius-md);
+  gap: var(--space-4);
+  padding: var(--space-6);
+  background: color-mix(in srgb, var(--color-error) 5%, var(--color-bg-primary));
+  border: 1px solid color-mix(in srgb, var(--color-error) 20%, transparent);
+  border-radius: var(--border-radius);
   text-align: center;
 }
 
 .scout-error p {
   margin: 0;
-  color: var(--color-danger);
-  font-size: 0.875rem;
+  color: var(--color-error);
+  font-size: 13px;
 }
 
 /* Checkpoint Review */
 .scout-checkpoint-review {
-  background: var(--color-bg);
+  background: var(--color-bg-primary);
 }
 
 .checkpoint-review-header {
   display: flex;
   align-items: center;
-  gap: var(--spacing-md);
-  margin-bottom: var(--spacing-lg);
-  padding-bottom: var(--spacing-md);
-  border-bottom: 1px solid var(--color-border);
+  gap: var(--space-4);
+  margin-bottom: var(--space-5);
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--color-border-default);
 }
 
 .checkpoint-review-header h3 {
-  font-size: 1rem;
+  font-size: 16px;
   font-weight: 600;
-  color: var(--color-text);
+  color: var(--color-text-primary);
   margin: 0;
 }
 
 .back-button {
   background: none;
   border: none;
-  padding: var(--spacing-xs) var(--spacing-sm);
-  font-size: 0.875rem;
+  padding: var(--space-1) var(--space-2);
+  font-size: 13px;
   color: var(--color-text-secondary);
   cursor: pointer;
-  border-radius: var(--radius-sm);
+  border-radius: var(--border-radius);
   transition: all 0.15s ease;
 }
 
 .back-button:hover {
   background: var(--color-bg-secondary);
-  color: var(--color-text);
+  color: var(--color-text-primary);
 }
 
 /* Responsive */
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .scout-container {
-    padding: var(--spacing-md);
+    padding: var(--space-4) var(--space-mobile-gutter);
   }
 
   .scout-header {
     flex-direction: column;
     align-items: flex-start;
-    gap: var(--spacing-sm);
+    gap: var(--space-2);
   }
 
   .scout-search-box {
